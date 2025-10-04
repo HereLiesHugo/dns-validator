@@ -11,6 +11,7 @@ A comprehensive cross-platform CLI tool for DNS validation, featuring delegation
 - **DNS Delegation Check**: Verify DNS delegation and authoritative name servers
 - **Propagation Check**: Test DNS propagation across multiple public DNS servers
 - **Multi-Provider DNS Settings**: Detect and analyze DNS settings from 50+ providers including Cloudflare, AWS Route 53, Google Cloud DNS, Azure DNS, and more
+- **🔐 Secure Credential Management**: Encrypted storage and management of API keys for multiple providers
 - **Verbose CLI Output**: Detailed logging and colored output for better debugging
 - **Cross-platform Compatibility**: Works on Windows, Linux, and macOS
 - **Concurrent Processing**: Fast parallel DNS queries for efficient testing
@@ -73,6 +74,11 @@ python dns_validator.py cloudflare example.com --api-token your_cf_token
 
 # Run all checks at once
 python dns_validator.py full example.com
+
+# Manage API credentials (NEW!)
+python dns_validator.py creds add Cloudflare production --api-token YOUR_TOKEN
+python dns_validator.py creds list
+python dns_validator.py provider example.com --provider cloudflare --cred-name production
 
 # Enable verbose output for any command
 python dns_validator.py --verbose delegation example.com
@@ -181,6 +187,26 @@ Perform all DNS checks in sequence.
 - Summary of all issues found
 - Recommended actions
 
+#### `creds`
+🔐 **Manage API credentials for DNS providers (NEW!)**
+
+**Subcommands:**
+- `add <provider> <name>`: Add new credentials with secure encryption
+- `list`: Display all stored credentials (secrets masked)
+- `edit <provider> <name>`: Interactively edit existing credentials
+- `delete <provider> <name>`: Remove stored credentials
+- `test <provider> <name> <domain>`: Test credentials with API call
+- `export <file>`: Export credential structure (optional --include-secrets)
+- `clear`: Remove all stored credentials
+
+**Features:**
+- 🔒 AES-256 encryption for all sensitive data
+- 🏢 Multi-provider support (Cloudflare, AWS, Google Cloud, Azure, DigitalOcean)
+- 👥 Multiple credential sets per provider (staging, production, etc.)
+- 🔐 Interactive secure input for sensitive fields
+- 💾 Secure storage in `~/.dns-validator/` directory
+- 📤 Safe export/backup functionality
+
 ## DNS Servers Tested
 
 The propagation check queries the following public DNS servers:
@@ -199,10 +225,11 @@ The propagation check queries the following public DNS servers:
 The tool supports detection and analysis of 50+ DNS providers:
 
 ### 🌐 Major Cloud Providers
-- **Cloudflare** (✅ Full API Support)
-- **AWS Route 53** (🔧 API Planned)
-- **Google Cloud DNS** (🔧 API Planned)
-- **Azure DNS** (🔧 API Planned)
+- **Cloudflare** (✅ Full API Support + 🔐 Credential Management)
+- **AWS Route 53** (✅ Full API Support + 🔐 Credential Management)
+- **Google Cloud DNS** (✅ Full API Support + 🔐 Credential Management)
+- **Azure DNS** (✅ Full API Support + 🔐 Credential Management)
+- **DigitalOcean** (✅ Full API Support + 🔐 Credential Management)
 
 ### 🚀 VPS/Cloud Hosting
 - DigitalOcean, Linode, Vultr, OVH, Hetzner, Scaleway
@@ -223,18 +250,47 @@ And many more! Use `python dns_validator.py list-providers` to see the complete 
 
 ## API Integration
 
+### 🔐 Secure Credential Management (NEW!)
+
+Store your API credentials securely with AES encryption:
+
+```bash
+# Add credentials interactively (most secure)
+dns-validator creds add Cloudflare production --interactive
+
+# Add credentials via command line
+dns-validator creds add AWS staging --access-key AKIA123... --secret-key abc123...
+
+# List stored credentials
+dns-validator creds list
+
+# Use stored credentials
+dns-validator provider example.com --provider cloudflare --cred-name production
+
+# Test credentials
+dns-validator creds test Cloudflare production example.com
+```
+
 ### Cloudflare
 ```bash
-# Get API token from Cloudflare dashboard
+# Using stored credentials (recommended)
+dns-validator creds add Cloudflare production --api-token YOUR_CF_TOKEN
+dns-validator provider example.com --provider cloudflare --cred-name production
+
+# Direct usage (less secure)
 dns-validator provider example.com --api-token YOUR_CF_TOKEN
 ```
 
 ### AWS Route 53
 ```bash
-# Using access keys
+# Using stored credentials (recommended)
+dns-validator creds add AWS production --access-key YOUR_KEY --secret-key YOUR_SECRET --region us-east-1
+dns-validator provider example.com --provider aws --cred-name production
+
+# Direct usage
 dns-validator provider example.com --access-key YOUR_KEY --secret-key YOUR_SECRET
 
-# Using default AWS credentials (recommended)
+# Using default AWS credentials
 dns-validator provider example.com --provider "AWS Route 53"
 ```
 **Prerequisites:** `pip install boto3`
@@ -285,11 +341,48 @@ python dns_validator.py delegation example.com --verbose
 # Detect DNS provider
 python dns_validator.py providers example.com
 
-# Check provider settings with API
+# Store credentials securely
+python dns_validator.py creds add Cloudflare production --api-token your_token
+
+# Check provider settings with stored credentials
+python dns_validator.py provider example.com --provider cloudflare --cred-name production
+
+# Direct API usage (less secure)
 python dns_validator.py provider example.com --api-token your_token
 
 # Legacy Cloudflare check
 python dns_validator.py cloudflare example.com --api-token your_token
+```
+
+### Credential Management Examples
+
+```bash
+# Add multiple environments
+python dns_validator.py creds add Cloudflare staging --interactive
+python dns_validator.py creds add Cloudflare production --interactive
+python dns_validator.py creds add AWS dev --access-key KEY1 --secret-key SECRET1
+python dns_validator.py creds add AWS prod --access-key KEY2 --secret-key SECRET2
+
+# List all stored credentials
+python dns_validator.py creds list
+
+# Test credentials
+python dns_validator.py creds test Cloudflare production example.com
+
+# Export backup (structure only)
+python dns_validator.py creds export backup.json
+
+# Export with secrets (use with caution)
+python dns_validator.py creds export full-backup.json --include-secrets
+
+# Edit existing credentials
+python dns_validator.py creds edit Cloudflare production
+
+# Delete credentials
+python dns_validator.py creds delete AWS dev
+
+# Clear all credentials
+python dns_validator.py creds clear
 ```
 
 ### Complete domain validation
@@ -348,7 +441,12 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 - `requests`: HTTP library for API calls
 - `colorama`: Cross-platform colored terminal text
 - `tabulate`: Pretty-print tabular data
-- `pycryptodome`: Cryptographic library
+- `cryptography`: Secure credential encryption (AES-256)
+- `concurrent.futures`: Parallel processing
+- **Optional Cloud SDKs:**
+  - `boto3`: AWS Route 53 integration
+  - `google-cloud-dns`: Google Cloud DNS integration
+  - `azure-mgmt-dns` + `azure-identity`: Azure DNS integration
 
 ## Contributing
 
@@ -369,6 +467,26 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 📖 **Documentation**: [README](https://github.com/HereLiesHugo/dns-validator#readme)
 
 ## Changelog
+
+### v2.0.0
+- 🔐 **NEW: Secure Credential Management System**
+  - AES-256 encrypted storage of API keys and tokens
+  - Multi-provider credential support (Cloudflare, AWS, Google Cloud, Azure, DigitalOcean)
+  - Multiple credential sets per provider (staging, production, etc.)
+  - Interactive secure input for sensitive data
+  - Credential testing, export, and backup functionality
+- 🌐 **Enhanced API Integration**
+  - Full API support for AWS Route 53, Google Cloud DNS, Azure DNS, DigitalOcean
+  - Improved error handling and debugging
+  - Better provider detection (52+ providers supported)
+- 🛡️ **Security Improvements**
+  - Credentials never stored in plain text
+  - Secure credential directory (~/.dns-validator/)
+  - Safe export options (with/without secrets)
+- 🚀 **Performance & UX**
+  - Faster concurrent DNS queries
+  - Better error messages and help text
+  - Improved cross-platform compatibility
 
 ### v1.0.0
 - Initial release
