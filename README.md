@@ -32,17 +32,6 @@ pip install -r requirements.txt
 chmod +x dns_validator.py
 ```
 
-### Method 2: Package Installation
-
-```bash
-# Install as a Python package
-pip install -e .
-
-# Now you can use the commands globally
-dns-validator --help
-dnsval --help
-```
-
 ## Usage
 
 ### Basic Commands
