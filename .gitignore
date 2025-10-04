@@ -179,3 +179,10 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+# DNS Validator Credentials - NEVER commit these!
+.dns-validator/
+credentials*.json
+*.key
+*.pem
+api-keys.json

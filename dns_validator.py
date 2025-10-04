@@ -12,12 +12,14 @@ import requests
 import sys
 import time
 import socket
+import getpass
 from typing import List, Dict, Optional, Tuple
 from colorama import init, Fore, Style
 from tabulate import tabulate
 import concurrent.futures
 import threading
 from datetime import datetime
+from api_key_manager import APIKeyManager
 
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)
@@ -923,15 +925,19 @@ def providers(ctx, domain):
 @click.option('--tenant-id', help='Azure tenant ID')
 @click.option('--client-id', help='Azure client ID')
 @click.option('--client-secret', help='Azure client secret')
+@click.option('--cred-name', help='Use stored credentials by name')
 @click.pass_context
 def provider(ctx, domain, provider, api_token, api_secret, access_key, secret_key, region, 
              service_account, project_id, subscription_id, resource_group, tenant_id, 
-             client_id, client_secret):
+             client_id, client_secret, cred_name):
     """Check DNS provider settings with API integration
     
     Examples:
     \b
-    # Cloudflare
+    # Using stored credentials
+    dns-validator provider example.com --cred-name production
+    
+    # Cloudflare with command line
     dns-validator provider example.com --api-token YOUR_CF_TOKEN
     
     # AWS Route 53
@@ -948,8 +954,48 @@ def provider(ctx, domain, provider, api_token, api_secret, access_key, secret_ke
     """
     validator = ctx.obj['validator']
     
-    # Build credentials dictionary
+    # First, try to load stored credentials if cred-name is provided or no CLI args given
     api_credentials = {}
+    
+    # Check if we have command line credentials
+    has_cli_creds = any([api_token, api_secret, access_key, secret_key, service_account, 
+                        subscription_id, tenant_id, client_id, client_secret])
+    
+    if cred_name or not has_cli_creds:
+        try:
+            key_manager = APIKeyManager()
+            
+            # If provider not specified, try to detect it
+            if not provider:
+                detection_result = validator.detect_dns_provider(domain)
+                provider = detection_result.get("primary_provider", "Unknown")
+                if provider == "Unknown":
+                    print(f"{Fore.YELLOW}Could not detect DNS provider. Please specify with --provider{Style.RESET_ALL}")
+                    return
+            
+            # Try to get stored credentials
+            if cred_name:
+                stored_creds = key_manager.get_credentials(provider, cred_name)
+                if not stored_creds:
+                    print(f"{Fore.RED}No stored credentials found for {provider} ({cred_name}){Style.RESET_ALL}")
+                    print(f"{Fore.CYAN}Use 'dns-validator creds add \"{provider}\" {cred_name} --interactive' to add credentials{Style.RESET_ALL}")
+                    return
+            else:
+                # Try to get default credentials (first available)
+                stored_creds = key_manager.get_credentials(provider)
+                if stored_creds:
+                    print(f"{Fore.CYAN}Using stored credentials for {provider}{Style.RESET_ALL}")
+            
+            if stored_creds:
+                api_credentials.update(stored_creds)
+                
+        except Exception as e:
+            if cred_name:
+                print(f"{Fore.RED}Error loading stored credentials: {e}{Style.RESET_ALL}")
+                return
+            # Continue with CLI credentials if stored creds fail
+    
+    # Override with command line credentials if provided
     if api_token:
         api_credentials['api_token'] = api_token
     if api_secret:
@@ -1177,6 +1223,303 @@ def full(ctx, domain, type, expected, api_token):
             print(f"  • {issue}")
     
     print(f"\n{Fore.MAGENTA}{'='*60}{Style.RESET_ALL}\n")
+
+
+# Credential Management Commands
+@cli.group()
+def creds():
+    """Manage API credentials for DNS providers"""
+    pass
+
+
+@creds.command('add')
+@click.argument('provider')
+@click.argument('name')
+@click.option('--interactive', '-i', is_flag=True, help='Interactive credential input')
+@click.option('--api-token', help='API token/key')
+@click.option('--api-secret', help='API secret')
+@click.option('--access-key', help='Access key (AWS)')
+@click.option('--secret-key', help='Secret key (AWS)')
+@click.option('--region', help='Region (AWS)')
+@click.option('--service-account', help='Service account file/JSON (Google Cloud)')
+@click.option('--project-id', help='Project ID (Google Cloud)')
+@click.option('--subscription-id', help='Subscription ID (Azure)')
+@click.option('--resource-group', help='Resource group (Azure)')
+@click.option('--tenant-id', help='Tenant ID (Azure)')
+@click.option('--client-id', help='Client ID (Azure)')
+@click.option('--client-secret', help='Client secret (Azure)')
+def add_credentials(provider, name, interactive, **kwargs):
+    """Add new API credentials for a provider
+    
+    Examples:
+    \b
+    # Interactive mode (recommended for security)
+    dns-validator creds add Cloudflare production --interactive
+    
+    # Command line (less secure)
+    dns-validator creds add Cloudflare production --api-token YOUR_TOKEN
+    
+    # Multiple credentials for same provider
+    dns-validator creds add "AWS Route 53" staging --interactive
+    dns-validator creds add "AWS Route 53" production --interactive
+    """
+    try:
+        key_manager = APIKeyManager()
+        credentials = {}
+        
+        if interactive:
+            print(f"\n{Fore.CYAN}Adding credentials for {provider} ({name}){Style.RESET_ALL}")
+            print("Enter credentials (press Enter to skip optional fields):")
+            
+            # Provider-specific interactive prompts
+            if provider.lower() == 'cloudflare':
+                api_token = getpass.getpass("Cloudflare API Token: ")
+                if api_token:
+                    credentials['api_token'] = api_token
+            
+            elif 'aws' in provider.lower() or 'route 53' in provider.lower():
+                access_key = input("AWS Access Key ID: ")
+                if access_key:
+                    credentials['access_key'] = access_key
+                    secret_key = getpass.getpass("AWS Secret Access Key: ")
+                    if secret_key:
+                        credentials['secret_key'] = secret_key
+                region = input("AWS Region (default: us-east-1): ") or "us-east-1"
+                credentials['region'] = region
+            
+            elif 'google' in provider.lower():
+                service_account = input("Service Account JSON file path or JSON string: ")
+                if service_account:
+                    credentials['service_account'] = service_account
+                project_id = input("Google Cloud Project ID: ")
+                if project_id:
+                    credentials['project_id'] = project_id
+            
+            elif 'azure' in provider.lower():
+                subscription_id = input("Azure Subscription ID: ")
+                if subscription_id:
+                    credentials['subscription_id'] = subscription_id
+                resource_group = input("Resource Group (optional): ")
+                if resource_group:
+                    credentials['resource_group'] = resource_group
+                tenant_id = input("Tenant ID (for service principal): ")
+                if tenant_id:
+                    credentials['tenant_id'] = tenant_id
+                    client_id = input("Client ID: ")
+                    if client_id:
+                        credentials['client_id'] = client_id
+                        client_secret = getpass.getpass("Client Secret: ")
+                        if client_secret:
+                            credentials['client_secret'] = client_secret
+            
+            elif 'digitalocean' in provider.lower():
+                api_token = getpass.getpass("DigitalOcean API Token: ")
+                if api_token:
+                    credentials['api_token'] = api_token
+            
+            else:
+                # Generic prompts
+                api_token = getpass.getpass("API Token/Key (if applicable): ")
+                if api_token:
+                    credentials['api_token'] = api_token
+                api_secret = getpass.getpass("API Secret (if applicable): ")
+                if api_secret:
+                    credentials['api_secret'] = api_secret
+        
+        else:
+            # Use command line arguments
+            for key, value in kwargs.items():
+                if value is not None:
+                    credentials[key.replace('-', '_')] = value
+        
+        if not credentials:
+            print(f"{Fore.RED}No credentials provided{Style.RESET_ALL}")
+            return
+        
+        key_manager.add_credentials(provider, name, credentials)
+        print(f"{Fore.GREEN}✓ Credentials added for {provider} ({name}){Style.RESET_ALL}")
+        
+    except Exception as e:
+        print(f"{Fore.RED}Error adding credentials: {e}{Style.RESET_ALL}")
+
+
+@creds.command('list')
+@click.option('--provider', help='Filter by provider')
+@click.option('--show-values', is_flag=True, help='Show credential values (use with caution)')
+def list_credentials(provider, show_values):
+    """List stored credentials"""
+    try:
+        key_manager = APIKeyManager()
+        all_creds = key_manager.list_credentials(provider)
+        
+        if not all_creds:
+            print(f"{Fore.YELLOW}No credentials stored{Style.RESET_ALL}")
+            return
+        
+        print(f"\n{Fore.CYAN}Stored Credentials{Style.RESET_ALL}")
+        print("=" * 50)
+        
+        for prov, creds in all_creds.items():
+            print(f"\n{Fore.YELLOW}{prov}:{Style.RESET_ALL}")
+            
+            if not creds:
+                print("  No credentials stored")
+                continue
+            
+            for name, cred_data in creds.items():
+                print(f"  📋 {name}")
+                
+                if show_values:
+                    for key, value in cred_data.items():
+                        if any(sensitive in key.lower() for sensitive in ['token', 'key', 'secret', 'password']):
+                            display_value = value if show_values else '***HIDDEN***'
+                        else:
+                            display_value = value
+                        print(f"    {key}: {display_value}")
+                else:
+                    fields = list(cred_data.keys())
+                    print(f"    Fields: {', '.join(fields)}")
+        
+        print()
+        
+    except Exception as e:
+        print(f"{Fore.RED}Error listing credentials: {e}{Style.RESET_ALL}")
+
+
+@creds.command('delete')
+@click.argument('provider')
+@click.argument('name')
+@click.option('--confirm', is_flag=True, help='Skip confirmation prompt')
+def delete_credentials(provider, name, confirm):
+    """Delete stored credentials"""
+    try:
+        key_manager = APIKeyManager()
+        
+        if not confirm:
+            response = input(f"Delete credentials for {provider} ({name})? [y/N]: ")
+            if response.lower() != 'y':
+                print("Cancelled")
+                return
+        
+        if key_manager.delete_credentials(provider, name):
+            print(f"{Fore.GREEN}✓ Credentials deleted for {provider} ({name}){Style.RESET_ALL}")
+        else:
+            print(f"{Fore.YELLOW}Credentials not found for {provider} ({name}){Style.RESET_ALL}")
+        
+    except Exception as e:
+        print(f"{Fore.RED}Error deleting credentials: {e}{Style.RESET_ALL}")
+
+
+@creds.command('edit')
+@click.argument('provider')
+@click.argument('name')
+@click.option('--interactive', '-i', is_flag=True, help='Interactive credential editing')
+def edit_credentials(provider, name, interactive):
+    """Edit existing credentials"""
+    try:
+        key_manager = APIKeyManager()
+        existing_creds = key_manager.get_credentials(provider, name)
+        
+        if not existing_creds:
+            print(f"{Fore.RED}Credentials not found for {provider} ({name}){Style.RESET_ALL}")
+            return
+        
+        print(f"\n{Fore.CYAN}Editing credentials for {provider} ({name}){Style.RESET_ALL}")
+        print("Current fields:", ", ".join(existing_creds.keys()))
+        print("Enter new values (press Enter to keep existing):")
+        
+        updated_creds = {}
+        
+        for key, current_value in existing_creds.items():
+            if any(sensitive in key.lower() for sensitive in ['token', 'key', 'secret', 'password']):
+                prompt = f"{key} (***HIDDEN***): "
+                new_value = getpass.getpass(prompt)
+            else:
+                prompt = f"{key} ({current_value}): "
+                new_value = input(prompt)
+            
+            if new_value:
+                updated_creds[key] = new_value
+        
+        if updated_creds:
+            key_manager.update_credentials(provider, name, updated_creds)
+            print(f"{Fore.GREEN}✓ Credentials updated for {provider} ({name}){Style.RESET_ALL}")
+        else:
+            print("No changes made")
+        
+    except Exception as e:
+        print(f"{Fore.RED}Error editing credentials: {e}{Style.RESET_ALL}")
+
+
+@creds.command('export')
+@click.argument('output_file')
+@click.option('--include-secrets', is_flag=True, help='Include sensitive values (use with caution)')
+def export_credentials(output_file, include_secrets):
+    """Export credentials to a file"""
+    try:
+        key_manager = APIKeyManager()
+        key_manager.export_config(output_file, include_secrets)
+        
+        if include_secrets:
+            print(f"{Fore.YELLOW}⚠ Exported credentials with secrets to {output_file}{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}⚠ Keep this file secure!{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.GREEN}✓ Exported credential structure to {output_file}{Style.RESET_ALL}")
+        
+    except Exception as e:
+        print(f"{Fore.RED}Error exporting credentials: {e}{Style.RESET_ALL}")
+
+
+@creds.command('clear')
+@click.option('--confirm', is_flag=True, help='Skip confirmation prompt')
+def clear_all_credentials(confirm):
+    """Clear all stored credentials"""
+    try:
+        if not confirm:
+            response = input("Clear ALL stored credentials? This cannot be undone! [y/N]: ")
+            if response.lower() != 'y':
+                print("Cancelled")
+                return
+        
+        key_manager = APIKeyManager()
+        key_manager.clear_all_credentials()
+        print(f"{Fore.GREEN}✓ All credentials cleared{Style.RESET_ALL}")
+        
+    except Exception as e:
+        print(f"{Fore.RED}Error clearing credentials: {e}{Style.RESET_ALL}")
+
+
+@creds.command('test')
+@click.argument('provider')
+@click.argument('name')
+@click.argument('domain')
+def test_credentials(provider, name, domain):
+    """Test stored credentials with a domain"""
+    try:
+        key_manager = APIKeyManager()
+        credentials = key_manager.get_credentials(provider, name)
+        
+        if not credentials:
+            print(f"{Fore.RED}Credentials not found for {provider} ({name}){Style.RESET_ALL}")
+            return
+        
+        print(f"{Fore.CYAN}Testing credentials for {provider} ({name}) with {domain}{Style.RESET_ALL}")
+        
+        # Use the existing provider check functionality
+        validator = DNSValidator(verbose=True)
+        result = validator.check_provider_settings(domain, provider, credentials)
+        
+        if result.get("api_available") and not result.get("errors"):
+            print(f"{Fore.GREEN}✓ Credentials are working!{Style.RESET_ALL}")
+            if result.get("records"):
+                print(f"Found {len(result['records'])} DNS records")
+        else:
+            print(f"{Fore.RED}✗ Credentials test failed{Style.RESET_ALL}")
+            for error in result.get("errors", []):
+                print(f"  • {error}")
+        
+    except Exception as e:
+        print(f"{Fore.RED}Error testing credentials: {e}{Style.RESET_ALL}")
 
 
 if __name__ == '__main__':
