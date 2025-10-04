@@ -4,7 +4,7 @@ A comprehensive cross-platform CLI tool for DNS validation, featuring delegation
 
 ![Python](https://img.shields.io/badge/python-3.7+-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+![License]((https://img.shields.io/gitlab/license/DPDmancul/clap-serde-derive?color=brightgreen&style=flat-square&logo=gnu)
 
 ## Features
 
