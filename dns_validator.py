@@ -278,18 +278,21 @@ class DNSValidator:
         }
         
         # Provider-specific API integrations
-        if provider == "Cloudflare" and api_credentials and api_credentials.get("api_token"):
-            result.update(self._check_cloudflare_api(domain, api_credentials["api_token"]))
-        elif provider == "AWS Route 53" and api_credentials:
-            result.update(self._check_route53_api(domain, api_credentials))
-        elif provider == "Google Cloud DNS" and api_credentials:
-            result.update(self._check_google_dns_api(domain, api_credentials))
-        elif provider == "Azure DNS" and api_credentials:
-            result.update(self._check_azure_dns_api(domain, api_credentials))
-        elif provider == "DigitalOcean" and api_credentials:
-            result.update(self._check_digitalocean_api(domain, api_credentials))
+        if provider == "Cloudflare":
+            if api_credentials and api_credentials.get("api_token"):
+                result.update(self._check_cloudflare_api(domain, api_credentials["api_token"]))
+            else:
+                result["errors"].append("Cloudflare API token required")
+        elif provider == "AWS Route 53":
+            result.update(self._check_route53_api(domain, api_credentials or {}))
+        elif provider == "Google Cloud DNS":
+            result.update(self._check_google_dns_api(domain, api_credentials or {}))
+        elif provider == "Azure DNS":
+            result.update(self._check_azure_dns_api(domain, api_credentials or {}))
+        elif provider == "DigitalOcean":
+            result.update(self._check_digitalocean_api(domain, api_credentials or {}))
         else:
-            result["errors"].append(f"No API integration available for {provider} or credentials not provided")
+            result["errors"].append(f"No API integration available for {provider}")
             self.log(f"No API integration for {provider}", Fore.YELLOW, "WARNING")
         
         return result
@@ -347,36 +350,337 @@ class DNSValidator:
         return result
     
     def _check_route53_api(self, domain: str, credentials: Dict) -> Dict:
-        """Check AWS Route 53 API settings (placeholder for future implementation)"""
-        self.log("AWS Route 53 API integration not yet implemented", Fore.YELLOW, "WARNING")
-        return {
-            "api_available": False,
-            "errors": ["AWS Route 53 API integration not yet implemented"]
-        }
+        """Check AWS Route 53 API settings"""
+        result = {"api_available": True, "settings": {}, "records": [], "errors": []}
+        
+        try:
+            import boto3
+            from botocore.exceptions import ClientError, NoCredentialsError
+            
+            # Initialize Route 53 client
+            if credentials.get('access_key') and credentials.get('secret_key'):
+                client = boto3.client(
+                    'route53',
+                    aws_access_key_id=credentials['access_key'],
+                    aws_secret_access_key=credentials['secret_key'],
+                    region_name=credentials.get('region', 'us-east-1')
+                )
+            else:
+                # Try using default credentials (IAM role, profile, etc.)
+                client = boto3.client('route53')
+            
+            # Find hosted zone for domain
+            hosted_zones = client.list_hosted_zones()
+            zone_id = None
+            zone_info = None
+            
+            for zone in hosted_zones['HostedZones']:
+                if zone['Name'].rstrip('.') == domain:
+                    zone_id = zone['Id'].split('/')[-1]
+                    zone_info = zone
+                    break
+            
+            if not zone_id:
+                result["errors"].append(f"Hosted zone for {domain} not found")
+                return result
+            
+            # Get zone settings
+            result["settings"] = {
+                "zone_id": zone_id,
+                "name": zone_info['Name'],
+                "record_count": zone_info['ResourceRecordSetCount'],
+                "config": zone_info.get('Config', {}),
+                "caller_reference": zone_info.get('CallerReference', 'N/A')
+            }
+            
+            # Get DNS records
+            paginator = client.get_paginator('list_resource_record_sets')
+            records = []
+            
+            for page in paginator.paginate(HostedZoneId=zone_id):
+                for record in page['ResourceRecordSets']:
+                    record_data = {
+                        "name": record['Name'],
+                        "type": record['Type'],
+                        "ttl": record.get('TTL', 'N/A'),
+                        "values": []
+                    }
+                    
+                    if 'ResourceRecords' in record:
+                        record_data["values"] = [r['Value'] for r in record['ResourceRecords']]
+                    elif 'AliasTarget' in record:
+                        record_data["values"] = [f"ALIAS: {record['AliasTarget']['DNSName']}"]
+                        record_data["alias"] = True
+                    
+                    records.append(record_data)
+            
+            result["records"] = records
+            self.log(f"Retrieved {len(records)} DNS records from Route 53", Fore.GREEN)
+            
+        except ImportError:
+            result["api_available"] = False
+            result["errors"] = ["boto3 library not installed. Install with: pip install boto3"]
+        except (NoCredentialsError, ClientError) as e:
+            result["errors"] = [f"AWS credentials error: {str(e)}"]
+        except Exception as e:
+            result["errors"] = [f"Error accessing Route 53 API: {str(e)}"]
+        
+        return result
     
     def _check_google_dns_api(self, domain: str, credentials: Dict) -> Dict:
-        """Check Google Cloud DNS API settings (placeholder for future implementation)"""
-        self.log("Google Cloud DNS API integration not yet implemented", Fore.YELLOW, "WARNING")
-        return {
-            "api_available": False,
-            "errors": ["Google Cloud DNS API integration not yet implemented"]
-        }
+        """Check Google Cloud DNS API settings"""
+        result = {"api_available": True, "settings": {}, "records": [], "errors": []}
+        
+        try:
+            from google.cloud import dns
+            from google.oauth2 import service_account
+            import json
+            
+            # Initialize client with service account
+            if credentials.get('service_account'):
+                if isinstance(credentials['service_account'], str):
+                    # If it's a file path
+                    if credentials['service_account'].endswith('.json'):
+                        creds = service_account.Credentials.from_service_account_file(
+                            credentials['service_account']
+                        )
+                    else:
+                        # If it's JSON string
+                        service_account_info = json.loads(credentials['service_account'])
+                        creds = service_account.Credentials.from_service_account_info(
+                            service_account_info
+                        )
+                    
+                    project_id = credentials.get('project_id') or creds.project_id
+                    client = dns.Client(project=project_id, credentials=creds)
+                else:
+                    result["errors"] = ["Invalid service account credentials"]
+                    return result
+            else:
+                # Try using default credentials
+                project_id = credentials.get('project_id')
+                if not project_id:
+                    result["errors"] = ["Project ID required for Google Cloud DNS"]
+                    return result
+                client = dns.Client(project=project_id)
+            
+            # Find managed zone for domain
+            zones = list(client.list_zones())
+            zone = None
+            
+            for z in zones:
+                if z.dns_name.rstrip('.') == domain:
+                    zone = z
+                    break
+            
+            if not zone:
+                result["errors"].append(f"Managed zone for {domain} not found")
+                return result
+            
+            # Get zone settings
+            result["settings"] = {
+                "zone_name": zone.name,
+                "dns_name": zone.dns_name,
+                "description": zone.description or "N/A",
+                "creation_time": str(zone.created),
+                "name_servers": zone.name_servers
+            }
+            
+            # Get DNS records
+            records = []
+            for record in zone.list_resource_record_sets():
+                record_data = {
+                    "name": record.name,
+                    "type": record.record_type,
+                    "ttl": record.ttl,
+                    "values": list(record.rrdatas)
+                }
+                records.append(record_data)
+            
+            result["records"] = records
+            self.log(f"Retrieved {len(records)} DNS records from Google Cloud DNS", Fore.GREEN)
+            
+        except ImportError:
+            result["api_available"] = False
+            result["errors"] = ["google-cloud-dns library not installed. Install with: pip install google-cloud-dns"]
+        except Exception as e:
+            result["errors"] = [f"Error accessing Google Cloud DNS API: {str(e)}"]
+        
+        return result
     
     def _check_azure_dns_api(self, domain: str, credentials: Dict) -> Dict:
-        """Check Azure DNS API settings (placeholder for future implementation)"""
-        self.log("Azure DNS API integration not yet implemented", Fore.YELLOW, "WARNING")
-        return {
-            "api_available": False,
-            "errors": ["Azure DNS API integration not yet implemented"]
-        }
+        """Check Azure DNS API settings"""
+        result = {"api_available": True, "settings": {}, "records": [], "errors": []}
+        
+        try:
+            from azure.identity import DefaultAzureCredential, ClientSecretCredential
+            from azure.mgmt.dns import DnsManagementClient
+            from azure.core.exceptions import ResourceNotFoundError
+            
+            # Initialize credentials
+            if all(k in credentials for k in ['client_id', 'client_secret', 'tenant_id']):
+                credential = ClientSecretCredential(
+                    tenant_id=credentials['tenant_id'],
+                    client_id=credentials['client_id'],
+                    client_secret=credentials['client_secret']
+                )
+            else:
+                # Try using default credentials (managed identity, CLI, etc.)
+                credential = DefaultAzureCredential()
+            
+            subscription_id = credentials.get('subscription_id')
+            if not subscription_id:
+                result["errors"] = ["Azure subscription ID required"]
+                return result
+            
+            # Initialize DNS client
+            dns_client = DnsManagementClient(credential, subscription_id)
+            
+            # Find resource group and zone
+            resource_group = credentials.get('resource_group')
+            if not resource_group:
+                # Try to find the zone across all resource groups
+                zones = list(dns_client.zones.list())
+                zone = None
+                for z in zones:
+                    if z.name == domain:
+                        zone = z
+                        resource_group = z.id.split('/')[4]  # Extract RG from resource ID
+                        break
+                
+                if not zone:
+                    result["errors"].append(f"DNS zone for {domain} not found")
+                    return result
+            else:
+                try:
+                    zone = dns_client.zones.get(resource_group, domain)
+                except ResourceNotFoundError:
+                    result["errors"].append(f"DNS zone {domain} not found in resource group {resource_group}")
+                    return result
+            
+            # Get zone settings
+            result["settings"] = {
+                "zone_name": zone.name,
+                "resource_group": resource_group,
+                "location": zone.location,
+                "number_of_record_sets": zone.number_of_record_sets,
+                "max_number_of_record_sets": zone.max_number_of_record_sets,
+                "name_servers": zone.name_servers
+            }
+            
+            # Get DNS records
+            records = []
+            record_sets = dns_client.record_sets.list_by_dns_zone(resource_group, domain)
+            
+            for record_set in record_sets:
+                record_data = {
+                    "name": record_set.name,
+                    "type": record_set.type.split('/')[-1],  # Extract record type from full type
+                    "ttl": record_set.ttl,
+                    "values": []
+                }
+                
+                # Extract values based on record type
+                if hasattr(record_set, 'a_records') and record_set.a_records:
+                    record_data["values"] = [r.ipv4_address for r in record_set.a_records]
+                elif hasattr(record_set, 'aaaa_records') and record_set.aaaa_records:
+                    record_data["values"] = [r.ipv6_address for r in record_set.aaaa_records]
+                elif hasattr(record_set, 'cname_record') and record_set.cname_record:
+                    record_data["values"] = [record_set.cname_record.cname]
+                elif hasattr(record_set, 'mx_records') and record_set.mx_records:
+                    record_data["values"] = [f"{r.preference} {r.exchange}" for r in record_set.mx_records]
+                elif hasattr(record_set, 'ns_records') and record_set.ns_records:
+                    record_data["values"] = [r.nsdname for r in record_set.ns_records]
+                elif hasattr(record_set, 'txt_records') and record_set.txt_records:
+                    record_data["values"] = [' '.join(r.value) for r in record_set.txt_records]
+                
+                records.append(record_data)
+            
+            result["records"] = records
+            self.log(f"Retrieved {len(records)} DNS records from Azure DNS", Fore.GREEN)
+            
+        except ImportError:
+            result["api_available"] = False
+            result["errors"] = ["Azure libraries not installed. Install with: pip install azure-mgmt-dns azure-identity"]
+        except Exception as e:
+            result["errors"] = [f"Error accessing Azure DNS API: {str(e)}"]
+        
+        return result
     
     def _check_digitalocean_api(self, domain: str, credentials: Dict) -> Dict:
-        """Check DigitalOcean API settings (placeholder for future implementation)"""
-        self.log("DigitalOcean API integration not yet implemented", Fore.YELLOW, "WARNING")
-        return {
-            "api_available": False,
-            "errors": ["DigitalOcean API integration not yet implemented"]
-        }
+        """Check DigitalOcean API settings"""
+        result = {"api_available": True, "settings": {}, "records": [], "errors": []}
+        
+        try:
+            api_token = credentials.get('api_token')
+            if not api_token:
+                result["errors"] = ["DigitalOcean API token required"]
+                return result
+            
+            headers = {
+                'Authorization': f'Bearer {api_token}',
+                'Content-Type': 'application/json'
+            }
+            
+            # Get domain information
+            domain_response = requests.get(
+                f'https://api.digitalocean.com/v2/domains/{domain}',
+                headers=headers,
+                timeout=10
+            )
+            
+            if domain_response.status_code == 404:
+                result["errors"].append(f"Domain {domain} not found in DigitalOcean")
+                return result
+            elif domain_response.status_code != 200:
+                result["errors"].append(f"DigitalOcean API error: {domain_response.status_code}")
+                return result
+            
+            domain_data = domain_response.json()['domain']
+            
+            # Get domain settings
+            result["settings"] = {
+                "name": domain_data['name'],
+                "ttl": domain_data.get('ttl', 'N/A'),
+                "zone_file": domain_data.get('zone_file', 'N/A')
+            }
+            
+            # Get DNS records
+            records_response = requests.get(
+                f'https://api.digitalocean.com/v2/domains/{domain}/records',
+                headers=headers,
+                timeout=10
+            )
+            
+            if records_response.status_code == 200:
+                records_data = records_response.json()
+                records = []
+                
+                for record in records_data['domain_records']:
+                    record_data = {
+                        "id": record['id'],
+                        "name": record['name'],
+                        "type": record['type'],
+                        "ttl": record.get('ttl', 'N/A'),
+                        "values": [record.get('data', '')],
+                        "priority": record.get('priority')
+                    }
+                    
+                    # Add priority for MX records
+                    if record['type'] == 'MX' and record.get('priority'):
+                        record_data["values"] = [f"{record['priority']} {record.get('data', '')}"]
+                    
+                    records.append(record_data)
+                
+                result["records"] = records
+                self.log(f"Retrieved {len(records)} DNS records from DigitalOcean", Fore.GREEN)
+            else:
+                result["errors"].append(f"Failed to retrieve DNS records: {records_response.status_code}")
+            
+        except Exception as e:
+            result["errors"] = [f"Error accessing DigitalOcean API: {str(e)}"]
+        
+        return result
 
 
 @click.group()
@@ -552,15 +856,19 @@ def list_providers(ctx):
         print(f"\n{Fore.YELLOW}{category}{Style.RESET_ALL}")
         for provider in providers:
             if provider in provider_patterns:
-                api_support = "✅ API" if provider == "Cloudflare" else "🔧 Planned"
+                # Updated API support status
+                if provider in ["Cloudflare", "AWS Route 53", "Google Cloud DNS", "Azure DNS", "DigitalOcean"]:
+                    api_support = "✅ API"
+                else:
+                    api_support = "📋 Detect"
+                    
                 patterns = ", ".join(provider_patterns[provider][:2])  # Show first 2 patterns
                 if len(provider_patterns[provider]) > 2:
                     patterns += f" (+{len(provider_patterns[provider])-2} more)"
                 print(f"  {provider:<20} {api_support:<10} Patterns: {patterns}")
     
     print(f"\n{Fore.GREEN}API Integration Status:{Style.RESET_ALL}")
-    print("  ✅ Fully Supported: Cloudflare")
-    print("  🔧 Planned: AWS Route 53, Google Cloud DNS, Azure DNS, DigitalOcean")
+    print("  ✅ Fully Supported: Cloudflare, AWS Route 53, Google Cloud DNS, Azure DNS, DigitalOcean")
     print("  📋 Detection Only: All other providers")
     
     print(f"\n{Fore.CYAN}💡 Usage Examples:{Style.RESET_ALL}")
@@ -607,10 +915,37 @@ def providers(ctx, domain):
 @click.option('--api-secret', help='API secret for providers that require it')
 @click.option('--access-key', help='Access key for AWS Route 53')
 @click.option('--secret-key', help='Secret key for AWS Route 53')
-@click.option('--service-account', help='Service account file for Google Cloud DNS')
+@click.option('--region', help='AWS region (default: us-east-1)')
+@click.option('--service-account', help='Service account JSON file/string for Google Cloud DNS')
+@click.option('--project-id', help='Google Cloud project ID')
+@click.option('--subscription-id', help='Azure subscription ID')
+@click.option('--resource-group', help='Azure resource group name')
+@click.option('--tenant-id', help='Azure tenant ID')
+@click.option('--client-id', help='Azure client ID')
+@click.option('--client-secret', help='Azure client secret')
 @click.pass_context
-def provider(ctx, domain, provider, api_token, api_secret, access_key, secret_key, service_account):
-    """Check DNS provider settings with API integration"""
+def provider(ctx, domain, provider, api_token, api_secret, access_key, secret_key, region, 
+             service_account, project_id, subscription_id, resource_group, tenant_id, 
+             client_id, client_secret):
+    """Check DNS provider settings with API integration
+    
+    Examples:
+    \b
+    # Cloudflare
+    dns-validator provider example.com --api-token YOUR_CF_TOKEN
+    
+    # AWS Route 53
+    dns-validator provider example.com --access-key KEY --secret-key SECRET
+    
+    # Google Cloud DNS
+    dns-validator provider example.com --service-account /path/to/service-account.json --project-id PROJECT
+    
+    # Azure DNS
+    dns-validator provider example.com --subscription-id SUB_ID --resource-group RG_NAME
+    
+    # DigitalOcean
+    dns-validator provider example.com --api-token YOUR_DO_TOKEN
+    """
     validator = ctx.obj['validator']
     
     # Build credentials dictionary
@@ -623,8 +958,22 @@ def provider(ctx, domain, provider, api_token, api_secret, access_key, secret_ke
         api_credentials['access_key'] = access_key
     if secret_key:
         api_credentials['secret_key'] = secret_key
+    if region:
+        api_credentials['region'] = region
     if service_account:
         api_credentials['service_account'] = service_account
+    if project_id:
+        api_credentials['project_id'] = project_id
+    if subscription_id:
+        api_credentials['subscription_id'] = subscription_id
+    if resource_group:
+        api_credentials['resource_group'] = resource_group
+    if tenant_id:
+        api_credentials['tenant_id'] = tenant_id
+    if client_id:
+        api_credentials['client_id'] = client_id
+    if client_secret:
+        api_credentials['client_secret'] = client_secret
     
     result = validator.check_provider_settings(domain, provider, api_credentials)
     

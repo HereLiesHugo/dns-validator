@@ -224,14 +224,44 @@ And many more! Use `python dns_validator.py list-providers` to see the complete 
 ## API Integration
 
 ### Cloudflare
-To use Cloudflare API features:
-1. Log in to the Cloudflare dashboard
-2. Go to "My Profile" → "API Tokens"
-3. Create a token with "Zone:Read" permissions
-4. Use with `--api-token YOUR_TOKEN`
+```bash
+# Get API token from Cloudflare dashboard
+dns-validator provider example.com --api-token YOUR_CF_TOKEN
+```
 
-### Other Providers
-API integration for AWS Route 53, Google Cloud DNS, Azure DNS, and DigitalOcean is planned for future releases.
+### AWS Route 53
+```bash
+# Using access keys
+dns-validator provider example.com --access-key YOUR_KEY --secret-key YOUR_SECRET
+
+# Using default AWS credentials (recommended)
+dns-validator provider example.com --provider "AWS Route 53"
+```
+**Prerequisites:** `pip install boto3`
+
+### Google Cloud DNS
+```bash
+# Using service account file
+dns-validator provider example.com --service-account /path/to/service-account.json --project-id YOUR_PROJECT
+```
+**Prerequisites:** `pip install google-cloud-dns`
+
+### Azure DNS
+```bash
+# Using service principal
+dns-validator provider example.com --subscription-id SUB_ID --tenant-id TENANT_ID --client-id CLIENT_ID --client-secret CLIENT_SECRET
+
+# Using default Azure credentials
+dns-validator provider example.com --subscription-id SUB_ID --resource-group RG_NAME
+```
+**Prerequisites:** `pip install azure-mgmt-dns azure-identity`
+
+### DigitalOcean
+```bash
+dns-validator provider example.com --api-token YOUR_DO_TOKEN
+```
+
+For detailed setup instructions, see [CLOUD_PROVIDER_SETUP.md](CLOUD_PROVIDER_SETUP.md).
 
 ## Examples
 
