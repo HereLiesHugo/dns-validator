@@ -10,7 +10,7 @@ A comprehensive cross-platform CLI tool for DNS validation, featuring delegation
 
 - **DNS Delegation Check**: Verify DNS delegation and authoritative name servers
 - **Propagation Check**: Test DNS propagation across multiple public DNS servers
-- **Cloudflare Settings Check**: Analyze Cloudflare DNS settings and records (with API token)
+- **Multi-Provider DNS Settings**: Detect and analyze DNS settings from 50+ providers including Cloudflare, AWS Route 53, Google Cloud DNS, Azure DNS, and more
 - **Verbose CLI Output**: Detailed logging and colored output for better debugging
 - **Cross-platform Compatibility**: Works on Windows, Linux, and macOS
 - **Concurrent Processing**: Fast parallel DNS queries for efficient testing
@@ -59,10 +59,16 @@ python dns_validator.py propagation example.com --type MX
 # Check propagation with expected value validation
 python dns_validator.py propagation example.com --expected "192.168.1.1"
 
-# Check Cloudflare settings (basic)
-python dns_validator.py cloudflare example.com
+# Detect DNS providers
+python dns_validator.py providers example.com
 
-# Check Cloudflare settings with API token (detailed)
+# List all supported providers
+python dns_validator.py list-providers
+
+# Check provider settings (with API integration)
+python dns_validator.py provider example.com --api-token your_token
+
+# Check Cloudflare settings (legacy command)
 python dns_validator.py cloudflare example.com --api-token your_cf_token
 
 # Run all checks at once
@@ -117,8 +123,41 @@ Check DNS propagation across multiple DNS servers.
 - Consistency checking across servers
 - Response time measurement
 
+#### `providers <domain>`
+Detect DNS providers for a domain.
+
+**Features:**
+- Identifies primary and secondary DNS providers
+- Shows all detected providers
+- Lists nameserver details
+
+#### `list-providers`
+List all supported DNS providers.
+
+**Features:**
+- Shows 50+ supported DNS providers organized by category
+- Indicates API integration status
+- Displays detection patterns
+
+#### `provider <domain>`
+Check DNS provider settings with API integration.
+
+**Options:**
+- `--provider`: Specify provider to check
+- `--api-token`: API token for provider integration
+- `--api-secret`: API secret for providers that require it
+- `--access-key`: Access key for AWS Route 53
+- `--secret-key`: Secret key for AWS Route 53
+- `--service-account`: Service account file for Google Cloud DNS
+
+**Features:**
+- Auto-detects DNS provider
+- API integration for detailed settings
+- DNS record retrieval and analysis
+- Provider-specific configuration display
+
 #### `cloudflare <domain>`
-Check Cloudflare DNS settings.
+Check Cloudflare DNS settings (legacy command).
 
 **Options:**
 - `--api-token`: Cloudflare API token for detailed information
@@ -155,14 +194,44 @@ The propagation check queries the following public DNS servers:
 | Verisign | 64.6.64.6 | - |
 | Level3 | 4.2.2.1 | - |
 
-## Cloudflare API Integration
+## Supported DNS Providers
 
-To use Cloudflare-specific features, you need an API token:
+The tool supports detection and analysis of 50+ DNS providers:
 
+### 🌐 Major Cloud Providers
+- **Cloudflare** (✅ Full API Support)
+- **AWS Route 53** (🔧 API Planned)
+- **Google Cloud DNS** (🔧 API Planned)
+- **Azure DNS** (🔧 API Planned)
+
+### 🚀 VPS/Cloud Hosting
+- DigitalOcean, Linode, Vultr, OVH, Hetzner, Scaleway
+
+### 🏢 Domain Registrars
+- Namecheap, GoDaddy, Name.com, Domain.com, Gandi, Hover, Dynadot
+
+### 🔒 Security/Privacy DNS
+- Quad9, OpenDNS
+
+### ⚡ Performance DNS
+- DNS Made Easy, NS1, Constellix, UltraDNS
+
+### 🆓 Free DNS Services
+- No-IP, DuckDNS, FreeDNS, Hurricane Electric
+
+And many more! Use `python dns_validator.py list-providers` to see the complete list.
+
+## API Integration
+
+### Cloudflare
+To use Cloudflare API features:
 1. Log in to the Cloudflare dashboard
 2. Go to "My Profile" → "API Tokens"
 3. Create a token with "Zone:Read" permissions
-4. Use the token with `--api-token` option
+4. Use with `--api-token YOUR_TOKEN`
+
+### Other Providers
+API integration for AWS Route 53, Google Cloud DNS, Azure DNS, and DigitalOcean is planned for future releases.
 
 ## Examples
 
@@ -180,10 +249,16 @@ python dns_validator.py propagation example.com --expected "192.168.1.100"
 python dns_validator.py delegation example.com --verbose
 ```
 
-### Validate Cloudflare configuration
+### Detect and validate DNS provider
 
 ```bash
-# Check proxy settings and DNS records
+# Detect DNS provider
+python dns_validator.py providers example.com
+
+# Check provider settings with API
+python dns_validator.py provider example.com --api-token your_token
+
+# Legacy Cloudflare check
 python dns_validator.py cloudflare example.com --api-token your_token
 ```
 

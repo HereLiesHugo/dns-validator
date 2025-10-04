@@ -13,8 +13,14 @@ python dns_validator.py delegation example.com
 # Check DNS propagation
 python dns_validator.py propagation example.com
 
-# Check Cloudflare settings
-python dns_validator.py cloudflare example.com
+# Detect DNS providers
+python dns_validator.py providers example.com
+
+# List all supported providers
+python dns_validator.py list-providers
+
+# Check provider settings
+python dns_validator.py provider example.com --api-token YOUR_TOKEN
 
 # Run all checks
 python dns_validator.py full example.com
@@ -40,8 +46,11 @@ python dns_validator.py propagation example.com --type MX
 # Validate expected value
 python dns_validator.py propagation example.com --expected "192.168.1.1"
 
-# Use Cloudflare API token
-python dns_validator.py cloudflare example.com --api-token YOUR_TOKEN
+# Use provider API integration
+python dns_validator.py provider example.com --api-token YOUR_TOKEN
+
+# Check specific provider
+python dns_validator.py provider example.com --provider "AWS Route 53"
 
 # Complete validation with all options
 python dns_validator.py full example.com --type A --expected "1.2.3.4" --api-token YOUR_TOKEN
