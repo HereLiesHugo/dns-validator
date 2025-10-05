@@ -1,0 +1,3 @@
+- Check if free or paid version of Provider
+- Check server Provider, not just DNS
+- Check server location
