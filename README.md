@@ -50,6 +50,33 @@ python#### `dnssec <domain>`
 - Comprehensive health metrics
 - Exportable monitoring reports
 
+#### `bulk <domains_file>` 
+🚀 **Process multiple domains in parallel with progress tracking (NEW!)**
+
+**Options:**
+- `--checks, -c`: DNS checks to perform (delegation, propagation, provider, dnssec, security, certificate, ipv6, reverse-dns)
+- `--workers, -w`: Number of parallel workers (default: 10)
+- `--output, -o`: Output file for batch report (supports .json, .html, .csv)
+- `--format, -f`: Output format (overrides file extension)
+
+**Features:**
+- **Parallel processing** with configurable worker threads
+- **Real-time progress tracking** with live status updates
+- **Comprehensive batch reporting** in multiple formats
+- **Error handling and recovery** with detailed failure logs
+- **Performance metrics** including processing speed and success rates
+
+#### `create-bulk-file <output_file>` 
+📝 **Create a domains file for bulk processing (NEW!)**
+
+**Options:**
+- `--from-clipboard`: Read domains from clipboard
+
+**Features:**
+- **Domain validation** and automatic cleanup
+- **Flexible input** from command line or clipboard
+- **Formatted output** with comments and metadata
+
 #### `creds`
 🔐 **Manage API credentials for DNS providers**
 
@@ -283,6 +310,47 @@ python dns_validator.py provider example.com --provider cloudflare --cred-name p
 
 # Enable verbose output for any command
 python dns_validator.py --verbose delegation example.com
+```
+
+### Bulk Processing Examples (NEW!)
+
+```bash
+# Create domains file from command line
+dns-validator create-bulk-file my-domains.txt example.com google.com github.com cloudflare.com
+
+# Create domains file from clipboard
+dns-validator create-bulk-file domains.txt --from-clipboard
+
+# Basic bulk processing (delegation + propagation)
+dns-validator bulk my-domains.txt
+
+# Full security analysis for multiple domains
+dns-validator bulk my-domains.txt \
+  --checks delegation \
+  --checks propagation \
+  --checks provider \
+  --checks dnssec \
+  --checks security \
+  --checks certificate
+
+# High-performance processing with custom workers
+dns-validator bulk large-domain-list.txt \
+  --workers 25 \
+  --checks delegation \
+  --checks propagation \
+  --output results.html
+
+# Generate comprehensive JSON report
+dns-validator bulk domains.txt \
+  --checks delegation \
+  --checks security \
+  --checks ipv6 \
+  --output detailed-report.json
+
+# Quick CSV report for spreadsheet analysis
+dns-validator bulk company-domains.txt \
+  --output quick-report.csv \
+  --format csv
 ```
 
 ### Advanced Usage Examples
