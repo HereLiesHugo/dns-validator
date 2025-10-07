@@ -35,7 +35,7 @@ chmod +x dns_validator.py
 ### Method 2: Python Package Installation (pip)
 
 ```bash
-pip install dns-validator==1.0.0
+pip install dns-validator
 ```
 
 ## Usage
