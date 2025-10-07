@@ -2,6 +2,10 @@
 """
 Simple installation script for DNS Validator
 Cross-platform installer for Windows, Linux, and macOS
+
+Author: Matisse Urquhart
+Contact: me@maturqu.com
+License: GNU AGPL v3.0
 """
 
 import os

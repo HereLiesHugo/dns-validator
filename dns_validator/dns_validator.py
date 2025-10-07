@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
 DNS Validator CLI - A comprehensive DNS validation tool
+
+Author: Matisse Urquhart
+Contact: me@maturqu.com
+License: GNU AGPL v3.0
 """
 
 import click

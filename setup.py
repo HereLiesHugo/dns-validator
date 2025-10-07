@@ -19,7 +19,7 @@ setup(
         "Intended Audience :: Developers",
         "Topic :: Internet :: Name Service (DNS)",
         "Topic :: System :: Networking",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: GNU Affero General Public License v3",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",

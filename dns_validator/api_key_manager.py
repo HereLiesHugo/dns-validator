@@ -1,3 +1,11 @@
+"""
+API Key Manager for DNS Validator - Secure credential storage
+
+Author: Matisse Urquhart
+Contact: me@maturqu.com
+License: GNU AGPL v3.0
+"""
+
 import json
 import os
 from pathlib import Path

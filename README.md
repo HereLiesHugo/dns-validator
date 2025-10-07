@@ -4,7 +4,7 @@ A comprehensive cross-platform CLI tool for DNS validation, featuring delegation
 
 ![Python](https://img.shields.io/badge/python-3.7+-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
-![License](https://img.shields.io/badge/license-%20%20GNU%20GPLv3%20-green?style=plastic)
+![License](https://img.shields.io/badge/license-GNU%20AGPLv3-blue.svg)
 
 ## Features
 
@@ -485,7 +485,7 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU Affero General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
 
 ## Support
 
