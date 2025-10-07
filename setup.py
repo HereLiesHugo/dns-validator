@@ -33,7 +33,7 @@ setup(
         "Environment :: Console",
     ],
     python_requires=">=3.7",
-    install_requires=requirements,
+    install_requires=open('requirements.txt').read().splitlines(),
     entry_points={
         "console_scripts": [
             "dns-validator=dns_validator:cli",
