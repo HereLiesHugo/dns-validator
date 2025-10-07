@@ -308,6 +308,16 @@ class DNSValidator:
             result.update(self._check_azure_dns_api(domain, api_credentials or {}))
         elif provider == "DigitalOcean":
             result.update(self._check_digitalocean_api(domain, api_credentials or {}))
+        elif provider == "Namecheap":
+            result.update(self._check_namecheap_api(domain, api_credentials or {}))
+        elif provider == "GoDaddy":
+            result.update(self._check_godaddy_api(domain, api_credentials or {}))
+        elif provider == "Name.com":
+            result.update(self._check_name_com_api(domain, api_credentials or {}))
+        elif provider == "Gandi":
+            result.update(self._check_gandi_api(domain, api_credentials or {}))
+        elif provider == "OVH":
+            result.update(self._check_ovh_api(domain, api_credentials or {}))
         else:
             result["errors"].append(f"No API integration available for {provider}")
             self.log(f"No API integration for {provider}", Fore.YELLOW, "WARNING")
@@ -696,6 +706,535 @@ class DNSValidator:
             
         except Exception as e:
             result["errors"] = [f"Error accessing DigitalOcean API: {str(e)}"]
+        
+        return result
+
+    def _check_namecheap_api(self, domain: str, credentials: Dict) -> Dict:
+        """Check Namecheap DNS settings via API"""
+        result = {
+            "provider": "Namecheap",
+            "domain": domain,
+            "records": [],
+            "settings": {},
+            "errors": [],
+            "api_available": True
+        }
+        
+        try:
+            api_user = credentials.get("api_user")
+            api_key = credentials.get("api_key")
+            username = credentials.get("username", api_user)
+            client_ip = credentials.get("client_ip", "127.0.0.1")
+            
+            if not api_user or not api_key:
+                result["errors"].append("Namecheap API requires api_user and api_key")
+                result["api_available"] = False
+                return result
+            
+            # Namecheap API endpoint (sandbox: api.sandbox.namecheap.com, production: api.namecheap.com)
+            sandbox = credentials.get("sandbox", False)
+            base_url = "https://api.sandbox.namecheap.com/xml.response" if sandbox else "https://api.namecheap.com/xml.response"
+            
+            # Get domain info and DNS records
+            params = {
+                "ApiUser": api_user,
+                "ApiKey": api_key,
+                "UserName": username,
+                "Command": "namecheap.domains.dns.getHosts",
+                "ClientIp": client_ip,
+                "SLD": domain.split('.')[0],  # Second Level Domain
+                "TLD": '.'.join(domain.split('.')[1:])  # Top Level Domain
+            }
+            
+            response = requests.get(base_url, params=params, timeout=30)
+            
+            if response.status_code == 200:
+                # Parse XML response
+                import xml.etree.ElementTree as ET
+                root = ET.fromstring(response.text)
+                
+                # Check for API errors
+                errors = root.find(".//Errors")
+                if errors is not None and len(errors) > 0:
+                    for error in errors:
+                        result["errors"].append(f"Namecheap API Error: {error.text}")
+                    return result
+                
+                # Extract DNS records
+                hosts = root.findall(".//host")
+                records = []
+                
+                for host in hosts:
+                    record_data = {
+                        "name": host.get("Name", ""),
+                        "type": host.get("Type", ""),
+                        "address": host.get("Address", ""),
+                        "ttl": int(host.get("TTL", "1800")),
+                        "mx_pref": host.get("MXPref"),
+                        "host_id": host.get("HostId")
+                    }
+                    
+                    # Clean up record name
+                    if record_data["name"] == "@":
+                        record_data["name"] = domain
+                    elif record_data["name"] != domain and not record_data["name"].endswith(f".{domain}"):
+                        record_data["name"] = f"{record_data['name']}.{domain}"
+                    
+                    records.append(record_data)
+                
+                result["records"] = records
+                
+                # Get nameserver info
+                ns_params = {
+                    "ApiUser": api_user,
+                    "ApiKey": api_key,
+                    "UserName": username,
+                    "Command": "namecheap.domains.dns.getList",
+                    "ClientIp": client_ip,
+                    "SLD": domain.split('.')[0],
+                    "TLD": '.'.join(domain.split('.')[1:])
+                }
+                
+                ns_response = requests.get(base_url, params=ns_params, timeout=30)
+                if ns_response.status_code == 200:
+                    ns_root = ET.fromstring(ns_response.text)
+                    domain_info = ns_root.find(".//Domain")
+                    if domain_info is not None:
+                        result["settings"] = {
+                            "nameservers": [],
+                            "dns_type": domain_info.get("Type", "Unknown"),
+                            "is_premium": domain_info.get("IsPremium", "false") == "true",
+                            "auto_renew": domain_info.get("AutoRenew", "false") == "true"
+                        }
+                
+                self.log(f"Retrieved {len(records)} DNS records from Namecheap", Fore.GREEN)
+            else:
+                result["errors"].append(f"Failed to access Namecheap API: {response.status_code}")
+                
+        except Exception as e:
+            result["errors"] = [f"Error accessing Namecheap API: {str(e)}"]
+        
+        return result
+
+    def _check_godaddy_api(self, domain: str, credentials: Dict) -> Dict:
+        """Check GoDaddy DNS settings via API"""
+        result = {
+            "provider": "GoDaddy",
+            "domain": domain,
+            "records": [],
+            "settings": {},
+            "errors": [],
+            "api_available": True
+        }
+        
+        try:
+            api_key = credentials.get("api_key")
+            api_secret = credentials.get("api_secret")
+            
+            if not api_key or not api_secret:
+                result["errors"].append("GoDaddy API requires api_key and api_secret")
+                result["api_available"] = False
+                return result
+            
+            # GoDaddy API endpoint
+            base_url = "https://api.godaddy.com/v1"
+            
+            headers = {
+                "Authorization": f"sso-key {api_key}:{api_secret}",
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+            
+            # Get DNS records
+            records_url = f"{base_url}/domains/{domain}/records"
+            response = requests.get(records_url, headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                records_data = response.json()
+                records = []
+                
+                for record in records_data:
+                    record_data = {
+                        "name": record.get("name", ""),
+                        "type": record.get("type", ""),
+                        "data": record.get("data", ""),
+                        "ttl": record.get("ttl", 600),
+                        "priority": record.get("priority"),
+                        "port": record.get("port"),
+                        "service": record.get("service"),
+                        "protocol": record.get("protocol"),
+                        "weight": record.get("weight")
+                    }
+                    
+                    # Format full record name
+                    if record_data["name"] == "@":
+                        record_data["full_name"] = domain
+                    else:
+                        record_data["full_name"] = f"{record_data['name']}.{domain}"
+                    
+                    records.append(record_data)
+                
+                result["records"] = records
+                
+                # Get domain details
+                domain_url = f"{base_url}/domains/{domain}"
+                domain_response = requests.get(domain_url, headers=headers, timeout=30)
+                
+                if domain_response.status_code == 200:
+                    domain_data = domain_response.json()
+                    result["settings"] = {
+                        "status": domain_data.get("status"),
+                        "privacy": domain_data.get("privacy", False),
+                        "locked": domain_data.get("locked", False),
+                        "nameservers": domain_data.get("nameServers", []),
+                        "created_at": domain_data.get("createdAt"),
+                        "expires": domain_data.get("expires"),
+                        "auto_renew": domain_data.get("renewAuto", False)
+                    }
+                
+                self.log(f"Retrieved {len(records)} DNS records from GoDaddy", Fore.GREEN)
+            elif response.status_code == 404:
+                result["errors"].append(f"Domain {domain} not found in GoDaddy account")
+            elif response.status_code == 403:
+                result["errors"].append("GoDaddy API access denied - check API credentials and permissions")
+            else:
+                result["errors"].append(f"Failed to access GoDaddy API: {response.status_code}")
+                
+        except Exception as e:
+            result["errors"] = [f"Error accessing GoDaddy API: {str(e)}"]
+        
+        return result
+
+    def _check_name_com_api(self, domain: str, credentials: Dict) -> Dict:
+        """Check Name.com DNS settings via API"""
+        result = {
+            "provider": "Name.com",
+            "domain": domain,
+            "records": [],
+            "settings": {},
+            "errors": [],
+            "api_available": True
+        }
+        
+        try:
+            api_username = credentials.get("api_username")
+            api_token = credentials.get("api_token")
+            
+            if not api_username or not api_token:
+                result["errors"].append("Name.com API requires api_username and api_token")
+                result["api_available"] = False
+                return result
+            
+            # Name.com API endpoint
+            base_url = "https://api.name.com/v4"
+            
+            # Basic authentication
+            import base64
+            credentials_encoded = base64.b64encode(f"{api_username}:{api_token}".encode()).decode()
+            
+            headers = {
+                "Authorization": f"Basic {credentials_encoded}",
+                "Content-Type": "application/json"
+            }
+            
+            # Get DNS records
+            records_url = f"{base_url}/domains/{domain}/records"
+            response = requests.get(records_url, headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                response_data = response.json()
+                records_data = response_data.get("records", [])
+                records = []
+                
+                for record in records_data:
+                    record_data = {
+                        "id": record.get("id"),
+                        "domain_name": record.get("domainName"),
+                        "host": record.get("host"),
+                        "fqdn": record.get("fqdn"),
+                        "type": record.get("type"),
+                        "answer": record.get("answer"),
+                        "ttl": record.get("ttl", 300),
+                        "priority": record.get("priority")
+                    }
+                    records.append(record_data)
+                
+                result["records"] = records
+                
+                # Get domain info
+                domain_url = f"{base_url}/domains/{domain}"
+                domain_response = requests.get(domain_url, headers=headers, timeout=30)
+                
+                if domain_response.status_code == 200:
+                    domain_data = domain_response.json()
+                    result["settings"] = {
+                        "domain_name": domain_data.get("domainName"),
+                        "locked": domain_data.get("locked", False),
+                        "auto_renew": domain_data.get("autorenewEnabled", False),
+                        "privacy_enabled": domain_data.get("privacyEnabled", False),
+                        "create_date": domain_data.get("createDate"),
+                        "expire_date": domain_data.get("expireDate"),
+                        "nameservers": domain_data.get("nameservers", [])
+                    }
+                
+                self.log(f"Retrieved {len(records)} DNS records from Name.com", Fore.GREEN)
+            elif response.status_code == 404:
+                result["errors"].append(f"Domain {domain} not found in Name.com account")
+            elif response.status_code == 401:
+                result["errors"].append("Name.com API authentication failed - check credentials")
+            else:
+                result["errors"].append(f"Failed to access Name.com API: {response.status_code}")
+                
+        except Exception as e:
+            result["errors"] = [f"Error accessing Name.com API: {str(e)}"]
+        
+        return result
+
+    def _check_gandi_api(self, domain: str, credentials: Dict) -> Dict:
+        """Check Gandi DNS settings via API"""
+        result = {
+            "provider": "Gandi",
+            "domain": domain,
+            "records": [],
+            "settings": {},
+            "errors": [],
+            "api_available": True
+        }
+        
+        try:
+            api_key = credentials.get("api_key")
+            
+            if not api_key:
+                result["errors"].append("Gandi API requires api_key")
+                result["api_available"] = False
+                return result
+            
+            # Gandi API endpoint (v5)
+            base_url = "https://api.gandi.net/v5"
+            
+            headers = {
+                "Authorization": f"Apikey {api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            # Get DNS records for the domain
+            records_url = f"{base_url}/livedns/domains/{domain}/records"
+            response = requests.get(records_url, headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                records_data = response.json()
+                records = []
+                
+                for record in records_data:
+                    record_data = {
+                        "rrset_name": record.get("rrset_name"),
+                        "rrset_type": record.get("rrset_type"),
+                        "rrset_ttl": record.get("rrset_ttl", 10800),
+                        "rrset_values": record.get("rrset_values", []),
+                        "rrset_href": record.get("rrset_href")
+                    }
+                    
+                    # Format full name
+                    if record_data["rrset_name"] == "@":
+                        record_data["full_name"] = domain
+                    else:
+                        record_data["full_name"] = f"{record_data['rrset_name']}.{domain}"
+                    
+                    records.append(record_data)
+                
+                result["records"] = records
+                
+                # Get domain info
+                domain_url = f"{base_url}/domain/domains/{domain}"
+                domain_response = requests.get(domain_url, headers=headers, timeout=30)
+                
+                if domain_response.status_code == 200:
+                    domain_data = domain_response.json()
+                    result["settings"] = {
+                        "fqdn": domain_data.get("fqdn"),
+                        "status": domain_data.get("status"),
+                        "auto_renew": domain_data.get("autorenew", False),
+                        "can_tld_lock": domain_data.get("can_tld_lock", False),
+                        "tld_lock": domain_data.get("tld_lock", False),
+                        "nameservers": domain_data.get("nameservers", []),
+                        "dates": domain_data.get("dates", {}),
+                        "services": domain_data.get("services", [])
+                    }
+                
+                # Get LiveDNS domain info if available
+                livedns_url = f"{base_url}/livedns/domains/{domain}"
+                livedns_response = requests.get(livedns_url, headers=headers, timeout=30)
+                
+                if livedns_response.status_code == 200:
+                    livedns_data = livedns_response.json()
+                    if "livedns_info" not in result["settings"]:
+                        result["settings"]["livedns_info"] = {}
+                    result["settings"]["livedns_info"] = {
+                        "current": livedns_data.get("current"),
+                        "keys": livedns_data.get("keys", []),
+                        "automatic_snapshots": livedns_data.get("automatic_snapshots", False)
+                    }
+                
+                self.log(f"Retrieved {len(records)} DNS records from Gandi", Fore.GREEN)
+            elif response.status_code == 404:
+                result["errors"].append(f"Domain {domain} not found or not using Gandi LiveDNS")
+            elif response.status_code == 401:
+                result["errors"].append("Gandi API authentication failed - check API key")
+            else:
+                result["errors"].append(f"Failed to access Gandi API: {response.status_code}")
+                
+        except Exception as e:
+            result["errors"] = [f"Error accessing Gandi API: {str(e)}"]
+        
+        return result
+
+    def _check_ovh_api(self, domain: str, credentials: Dict) -> Dict:
+        """Check OVH DNS settings via API"""
+        result = {
+            "provider": "OVH",
+            "domain": domain,
+            "records": [],
+            "settings": {},
+            "errors": [],
+            "api_available": True
+        }
+        
+        try:
+            application_key = credentials.get("application_key")
+            application_secret = credentials.get("application_secret")
+            consumer_key = credentials.get("consumer_key")
+            endpoint = credentials.get("endpoint", "ovh-eu")  # ovh-eu, ovh-us, ovh-ca, etc.
+            
+            if not application_key or not application_secret or not consumer_key:
+                result["errors"].append("OVH API requires application_key, application_secret, and consumer_key")
+                result["api_available"] = False
+                return result
+            
+            # OVH API endpoint
+            endpoint_urls = {
+                "ovh-eu": "https://eu.api.ovh.com/1.0",
+                "ovh-us": "https://api.us.ovhcloud.com/1.0", 
+                "ovh-ca": "https://ca.api.ovh.com/1.0",
+                "kimsufi-eu": "https://eu.api.kimsufi.com/1.0",
+                "kimsufi-ca": "https://ca.api.kimsufi.com/1.0",
+                "soyoustart-eu": "https://eu.api.soyoustart.com/1.0",
+                "soyoustart-ca": "https://ca.api.soyoustart.com/1.0"
+            }
+            
+            base_url = endpoint_urls.get(endpoint, endpoint_urls["ovh-eu"])
+            
+            # OVH API requires signature for authentication
+            import hashlib
+            import time as time_module
+            
+            def sign_request(method, url, body, timestamp, application_secret, consumer_key):
+                """Generate OVH API signature"""
+                signature_data = f"{application_secret}+{consumer_key}+{method}+{url}+{body}+{timestamp}"
+                return "$1$" + hashlib.sha1(signature_data.encode()).hexdigest()
+            
+            # Get DNS zone records
+            method = "GET"
+            url = f"{base_url}/domain/zone/{domain}/record"
+            timestamp = str(int(time_module.time()))
+            body = ""
+            
+            signature = sign_request(method, url, body, timestamp, application_secret, consumer_key)
+            
+            headers = {
+                "X-Ovh-Application": application_key,
+                "X-Ovh-Consumer": consumer_key,
+                "X-Ovh-Signature": signature,
+                "X-Ovh-Timestamp": timestamp,
+                "Content-Type": "application/json"
+            }
+            
+            response = requests.get(url, headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                record_ids = response.json()
+                records = []
+                
+                # Get details for each record
+                for record_id in record_ids[:50]:  # Limit to first 50 records to avoid rate limits
+                    try:
+                        detail_url = f"{base_url}/domain/zone/{domain}/record/{record_id}"
+                        detail_timestamp = str(int(time_module.time()))
+                        detail_signature = sign_request("GET", detail_url, "", detail_timestamp, application_secret, consumer_key)
+                        
+                        detail_headers = {
+                            "X-Ovh-Application": application_key,
+                            "X-Ovh-Consumer": consumer_key,
+                            "X-Ovh-Signature": detail_signature,
+                            "X-Ovh-Timestamp": detail_timestamp,
+                            "Content-Type": "application/json"
+                        }
+                        
+                        detail_response = requests.get(detail_url, headers=detail_headers, timeout=30)
+                        
+                        if detail_response.status_code == 200:
+                            record_data = detail_response.json()
+                            record_info = {
+                                "id": record_data.get("id"),
+                                "zone": record_data.get("zone"),
+                                "subdomain": record_data.get("subdomain"),
+                                "fieldType": record_data.get("fieldType"),
+                                "target": record_data.get("target"),
+                                "ttl": record_data.get("ttl", 3600)
+                            }
+                            
+                            # Format full name
+                            if record_info["subdomain"]:
+                                record_info["full_name"] = f"{record_info['subdomain']}.{domain}"
+                            else:
+                                record_info["full_name"] = domain
+                            
+                            records.append(record_info)
+                        
+                        # Small delay to respect rate limits
+                        time.sleep(0.1)
+                        
+                    except Exception as record_error:
+                        self.log(f"Error getting record {record_id}: {str(record_error)}", Fore.YELLOW)
+                        continue
+                
+                result["records"] = records
+                
+                # Get domain information
+                domain_info_url = f"{base_url}/domain/{domain}"
+                domain_timestamp = str(int(time_module.time()))
+                domain_signature = sign_request("GET", domain_info_url, "", domain_timestamp, application_secret, consumer_key)
+                
+                domain_headers = {
+                    "X-Ovh-Application": application_key,
+                    "X-Ovh-Consumer": consumer_key,
+                    "X-Ovh-Signature": domain_signature,
+                    "X-Ovh-Timestamp": domain_timestamp,
+                    "Content-Type": "application/json"
+                }
+                
+                domain_response = requests.get(domain_info_url, headers=domain_headers, timeout=30)
+                
+                if domain_response.status_code == 200:
+                    domain_data = domain_response.json()
+                    result["settings"] = {
+                        "domain": domain_data.get("domain"),
+                        "offer": domain_data.get("offer"),
+                        "transfer_lock_status": domain_data.get("transferLockStatus"),
+                        "name_server_type": domain_data.get("nameServerType"),
+                        "dnssec_supported": domain_data.get("dnssecSupported", False),
+                        "glue_record_supported": domain_data.get("glueRecordSupported", False)
+                    }
+                
+                self.log(f"Retrieved {len(records)} DNS records from OVH", Fore.GREEN)
+            elif response.status_code == 404:
+                result["errors"].append(f"Domain zone {domain} not found in OVH account")
+            elif response.status_code == 403:
+                result["errors"].append("OVH API access denied - check credentials and permissions")
+            else:
+                result["errors"].append(f"Failed to access OVH API: {response.status_code}")
+                
+        except Exception as e:
+            result["errors"] = [f"Error accessing OVH API: {str(e)}"]
         
         return result
 
@@ -2551,7 +3090,7 @@ def list_providers(ctx):
         for provider in providers:
             if provider in provider_patterns:
                 # Updated API support status
-                if provider in ["Cloudflare", "AWS Route 53", "Google Cloud DNS", "Azure DNS", "DigitalOcean"]:
+                if provider in ["Cloudflare", "AWS Route 53", "Google Cloud DNS", "Azure DNS", "DigitalOcean", "Namecheap", "GoDaddy", "Name.com", "Gandi", "OVH"]:
                     api_support = "✅ API"
                 else:
                     api_support = "📋 Detect"
@@ -2563,11 +3102,14 @@ def list_providers(ctx):
     
     print(f"\n{Fore.GREEN}API Integration Status:{Style.RESET_ALL}")
     print("  ✅ Fully Supported: Cloudflare, AWS Route 53, Google Cloud DNS, Azure DNS, DigitalOcean")
+    print("                      Namecheap, GoDaddy, Name.com, Gandi, OVH")
     print("  📋 Detection Only: All other providers")
     
     print(f"\n{Fore.CYAN}💡 Usage Examples:{Style.RESET_ALL}")
     print("  dns-validator providers example.com")
     print("  dns-validator provider example.com --api-token YOUR_TOKEN")
+    print("  dns-validator provider example.com --api-user USER --api-secret SECRET  # Namecheap")
+    print("  dns-validator provider example.com --application-key KEY --consumer-key CONSUMER  # OVH")
     print()
 
 
@@ -2605,8 +3147,16 @@ def providers(ctx, domain):
 @cli.command()
 @click.argument('domain')
 @click.option('--provider', help='Specific DNS provider to check')
-@click.option('--api-token', help='API token/key for provider (Cloudflare, DigitalOcean, etc.)')
-@click.option('--api-secret', help='API secret for providers that require it')
+@click.option('--api-token', help='API token/key for provider (or api_user for Namecheap, username for Name.com)')
+@click.option('--api-secret', help='API secret/key for providers that require it')
+@click.option('--api-user', help='API user for Namecheap')
+@click.option('--username', help='Username for Name.com or Namecheap')
+@click.option('--client-ip', help='Client IP for Namecheap API')
+@click.option('--sandbox', is_flag=True, help='Use sandbox environment for Namecheap')
+@click.option('--application-key', help='Application key for OVH')
+@click.option('--application-secret', help='Application secret for OVH')
+@click.option('--consumer-key', help='Consumer key for OVH')
+@click.option('--endpoint', help='OVH endpoint (ovh-eu, ovh-us, ovh-ca, etc.)')
 @click.option('--access-key', help='Access key for AWS Route 53')
 @click.option('--secret-key', help='Secret key for AWS Route 53')
 @click.option('--region', help='AWS region (default: us-east-1)')
@@ -2619,9 +3169,10 @@ def providers(ctx, domain):
 @click.option('--client-secret', help='Azure client secret')
 @click.option('--cred-name', help='Use stored credentials by name')
 @click.pass_context
-def provider(ctx, domain, provider, api_token, api_secret, access_key, secret_key, region, 
-             service_account, project_id, subscription_id, resource_group, tenant_id, 
-             client_id, client_secret, cred_name):
+def provider(ctx, domain, provider, api_token, api_secret, api_user, username, client_ip, 
+             sandbox, application_key, application_secret, consumer_key, endpoint,
+             access_key, secret_key, region, service_account, project_id, subscription_id, 
+             resource_group, tenant_id, client_id, client_secret, cred_name):
     """Check DNS provider settings with API integration
     
     Examples:
@@ -2643,6 +3194,21 @@ def provider(ctx, domain, provider, api_token, api_secret, access_key, secret_ke
     
     # DigitalOcean
     dns-validator provider example.com --api-token YOUR_DO_TOKEN
+    
+    # Namecheap
+    dns-validator provider example.com --api-token API_USER --api-secret API_KEY
+    
+    # GoDaddy
+    dns-validator provider example.com --api-token API_KEY --api-secret API_SECRET
+    
+    # Name.com
+    dns-validator provider example.com --api-token USERNAME --api-secret API_TOKEN
+    
+    # Gandi
+    dns-validator provider example.com --api-token API_KEY
+    
+    # OVH
+    dns-validator provider example.com --api-token APP_KEY --api-secret APP_SECRET
     """
     validator = ctx.obj['validator']
     
@@ -2650,7 +3216,8 @@ def provider(ctx, domain, provider, api_token, api_secret, access_key, secret_ke
     api_credentials = {}
     
     # Check if we have command line credentials
-    has_cli_creds = any([api_token, api_secret, access_key, secret_key, service_account, 
+    has_cli_creds = any([api_token, api_secret, api_user, username, client_ip, application_key,
+                        application_secret, consumer_key, access_key, secret_key, service_account, 
                         subscription_id, tenant_id, client_id, client_secret])
     
     if cred_name or not has_cli_creds:
@@ -2692,6 +3259,22 @@ def provider(ctx, domain, provider, api_token, api_secret, access_key, secret_ke
         api_credentials['api_token'] = api_token
     if api_secret:
         api_credentials['api_secret'] = api_secret
+    if api_user:
+        api_credentials['api_user'] = api_user
+    if username:
+        api_credentials['username'] = username
+    if client_ip:
+        api_credentials['client_ip'] = client_ip
+    if sandbox:
+        api_credentials['sandbox'] = sandbox
+    if application_key:
+        api_credentials['application_key'] = application_key
+    if application_secret:
+        api_credentials['application_secret'] = application_secret
+    if consumer_key:
+        api_credentials['consumer_key'] = consumer_key
+    if endpoint:
+        api_credentials['endpoint'] = endpoint
     if access_key:
         api_credentials['access_key'] = access_key
     if secret_key:

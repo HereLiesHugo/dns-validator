@@ -2,15 +2,6 @@
 - Check server Provider, not just DNS
 - Check server location
 
-- DNS Security Analysis
-Open resolver detection
-    DNS amplification vulnerability
-    Subdomain enumeration protection
-- Certificate Integration
-Certificate transparency logs
-    CAA record validation
-    SSL/TLS configuration check
-
 - Namecheap API Integration
 - GoDaddy API Integration
 - Name.com API Integration

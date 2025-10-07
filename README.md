@@ -518,6 +518,59 @@ dns-validator provider example.com --subscription-id SUB_ID --resource-group RG_
 dns-validator provider example.com --api-token YOUR_DO_TOKEN
 ```
 
+### Namecheap (NEW!)
+```bash
+# Using stored credentials (recommended)
+dns-validator creds add Namecheap production --api-user YOUR_USER --api-secret YOUR_KEY --username YOUR_USERNAME --client-ip YOUR_IP
+dns-validator provider example.com --provider namecheap --cred-name production
+
+# Direct usage
+dns-validator provider example.com --api-user YOUR_API_USER --api-secret YOUR_API_KEY --username YOUR_USERNAME --client-ip YOUR_CLIENT_IP
+
+# Sandbox mode for testing
+dns-validator provider example.com --api-user YOUR_API_USER --api-secret YOUR_API_KEY --sandbox
+```
+
+### GoDaddy (NEW!)
+```bash
+# Using stored credentials (recommended)
+dns-validator creds add GoDaddy production --api-token YOUR_API_KEY --api-secret YOUR_API_SECRET
+dns-validator provider example.com --provider godaddy --cred-name production
+
+# Direct usage
+dns-validator provider example.com --api-token YOUR_API_KEY --api-secret YOUR_API_SECRET
+```
+
+### Name.com (NEW!)
+```bash
+# Using stored credentials (recommended)
+dns-validator creds add "Name.com" production --api-token YOUR_USERNAME --api-secret YOUR_API_TOKEN
+dns-validator provider example.com --provider "Name.com" --cred-name production
+
+# Direct usage
+dns-validator provider example.com --api-token YOUR_USERNAME --api-secret YOUR_API_TOKEN
+```
+
+### Gandi (NEW!)
+```bash
+# Using stored credentials (recommended)
+dns-validator creds add Gandi production --api-token YOUR_API_KEY
+dns-validator provider example.com --provider gandi --cred-name production
+
+# Direct usage
+dns-validator provider example.com --api-token YOUR_API_KEY
+```
+
+### OVH (NEW!)
+```bash
+# Using stored credentials (recommended)
+dns-validator creds add OVH production --application-key YOUR_APP_KEY --application-secret YOUR_APP_SECRET --consumer-key YOUR_CONSUMER_KEY --endpoint ovh-eu
+dns-validator provider example.com --provider ovh --cred-name production
+
+# Direct usage
+dns-validator provider example.com --application-key YOUR_APP_KEY --application-secret YOUR_APP_SECRET --consumer-key YOUR_CONSUMER_KEY --endpoint ovh-eu
+```
+
 For detailed setup instructions, see [CLOUD_PROVIDER_SETUP.md](CLOUD_PROVIDER_SETUP.md).
 
 ## Examples
