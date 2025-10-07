@@ -2,23 +2,6 @@
 - Check server Provider, not just DNS
 - Check server location
 
-- DNSSEC validation
-Validate DNSSEC chain
-	Check DS records in parent zone
-	Verify RRSIG signatures
-	Check DNSKEY records
-- DNS Health Monitoring
-Real-time propagation monitoring
-	Alert on changes or failures
-	Historical tracking
-- Reverse DNS (PTR) validation
-	PTR record validation
-	Forward/reverse consistency check
-- DNS Cache analysis
-	TTL compliance checking
-	Cache poisoning detection
-	Optimal TTL recommendations
-
 - Geolocation DNS Testing
 Use DNS servers from different countries
     GeoDNS routing validation
