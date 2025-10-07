@@ -12,17 +12,24 @@ import dns.resolver
 import dns.zone  
 import dns.query
 import dns.message
+import dns.dnssec
+import dns.rrset
+import dns.rdatatype
+import dns.reversename
 import requests
 import sys
 import time
 import socket
 import getpass
+import json
 from typing import List, Dict, Optional, Tuple
 from colorama import init, Fore, Style
 from tabulate import tabulate
 import concurrent.futures
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
+from pathlib import Path
+import ipaddress
 from .api_key_manager import APIKeyManager
 
 # Initialize colorama for cross-platform colored output
@@ -685,6 +692,354 @@ class DNSValidator:
             
         except Exception as e:
             result["errors"] = [f"Error accessing DigitalOcean API: {str(e)}"]
+        
+        return result
+
+    def check_dnssec(self, domain: str) -> Dict:
+        """Check DNSSEC validation status and chain"""
+        self.log(f"Checking DNSSEC validation for {domain}", Fore.CYAN)
+        
+        result = {
+            "domain": domain,
+            "dnssec_enabled": False,
+            "ds_records": [],
+            "dnskey_records": [],
+            "rrsig_records": [],
+            "validation_chain": [],
+            "errors": [],
+            "warnings": []
+        }
+        
+        try:
+            # Check for DS records in parent zone
+            parent_domain = ".".join(domain.split(".")[1:])
+            if parent_domain:
+                try:
+                    ds_query = dns.resolver.resolve(domain, 'DS')
+                    result["ds_records"] = [str(rr) for rr in ds_query]
+                    result["dnssec_enabled"] = True
+                    self.log(f"Found DS records in parent zone {parent_domain}", Fore.GREEN)
+                except dns.resolver.NXDOMAIN:
+                    result["warnings"].append(f"No DS records found in parent zone {parent_domain}")
+                except Exception as e:
+                    result["errors"].append(f"Error checking DS records: {str(e)}")
+            
+            # Check for DNSKEY records
+            try:
+                dnskey_query = dns.resolver.resolve(domain, 'DNSKEY')
+                result["dnskey_records"] = [str(rr) for rr in dnskey_query]
+                if result["dnskey_records"]:
+                    result["dnssec_enabled"] = True
+                    self.log(f"Found DNSKEY records for {domain}", Fore.GREEN)
+                
+                # Validate DNSSEC chain if we have both DS and DNSKEY
+                if result["ds_records"] and result["dnskey_records"]:
+                    try:
+                        # Perform basic DNSSEC validation
+                        resolver = dns.resolver.Resolver()
+                        resolver.use_edns(0, dns.flags.DO)  # Enable DNSSEC validation
+                        
+                        # Try to resolve with DNSSEC validation
+                        answer = resolver.resolve(domain, 'A')
+                        if answer.response.flags & dns.flags.AD:
+                            result["validation_chain"].append("DNSSEC validation successful")
+                            self.log("DNSSEC validation chain verified", Fore.GREEN)
+                        else:
+                            result["warnings"].append("DNSSEC validation chain could not be verified")
+                            
+                    except Exception as e:
+                        result["errors"].append(f"DNSSEC validation error: {str(e)}")
+                        
+            except dns.resolver.NXDOMAIN:
+                result["warnings"].append("No DNSKEY records found")
+            except Exception as e:
+                result["errors"].append(f"Error checking DNSKEY records: {str(e)}")
+            
+            # Check for RRSIG records (signatures)
+            try:
+                rrsig_query = dns.resolver.resolve(domain, 'RRSIG')
+                result["rrsig_records"] = [str(rr) for rr in rrsig_query]
+                self.log(f"Found RRSIG records for {domain}", Fore.GREEN)
+            except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+                result["warnings"].append("No RRSIG records found")
+            except Exception as e:
+                result["errors"].append(f"Error checking RRSIG records: {str(e)}")
+            
+        except Exception as e:
+            result["errors"].append(f"General DNSSEC check error: {str(e)}")
+        
+        return result
+
+    def check_reverse_dns(self, ip_address: str) -> Dict:
+        """Check reverse DNS (PTR) records and forward/reverse consistency"""
+        self.log(f"Checking reverse DNS for {ip_address}", Fore.CYAN)
+        
+        result = {
+            "ip_address": ip_address,
+            "ptr_records": [],
+            "forward_reverse_consistent": False,
+            "forward_domains": [],
+            "reverse_domains": [],
+            "errors": [],
+            "warnings": []
+        }
+        
+        try:
+            # Validate IP address format
+            ip_obj = ipaddress.ip_address(ip_address)
+            
+            # Get reverse DNS name
+            reverse_name = dns.reversename.from_address(ip_address)
+            
+            # Query PTR records
+            try:
+                ptr_query = dns.resolver.resolve(reverse_name, 'PTR')
+                result["ptr_records"] = [str(rr).rstrip('.') for rr in ptr_query]
+                result["reverse_domains"] = result["ptr_records"].copy()
+                self.log(f"Found PTR records: {', '.join(result['ptr_records'])}", Fore.GREEN)
+                
+                # Check forward/reverse consistency
+                for ptr_domain in result["ptr_records"]:
+                    try:
+                        record_type = 'A' if ip_obj.version == 4 else 'AAAA'
+                        forward_query = dns.resolver.resolve(ptr_domain, record_type)
+                        forward_ips = [str(rr) for rr in forward_query]
+                        result["forward_domains"].extend(forward_ips)
+                        
+                        if ip_address in forward_ips:
+                            result["forward_reverse_consistent"] = True
+                            self.log(f"Forward/reverse consistency verified for {ptr_domain}", Fore.GREEN)
+                        else:
+                            result["warnings"].append(f"Forward lookup of {ptr_domain} does not match {ip_address}")
+                            
+                    except Exception as e:
+                        result["warnings"].append(f"Could not verify forward lookup for {ptr_domain}: {str(e)}")
+                        
+            except dns.resolver.NXDOMAIN:
+                result["warnings"].append(f"No PTR record found for {ip_address}")
+            except Exception as e:
+                result["errors"].append(f"Error querying PTR records: {str(e)}")
+                
+        except ValueError:
+            result["errors"].append(f"Invalid IP address format: {ip_address}")
+        except Exception as e:
+            result["errors"].append(f"Reverse DNS check error: {str(e)}")
+        
+        return result
+
+    def analyze_dns_cache(self, domain: str, record_type: str = 'A') -> Dict:
+        """Analyze DNS caching behavior and TTL compliance"""
+        self.log(f"Analyzing DNS cache behavior for {domain} ({record_type})", Fore.CYAN)
+        
+        result = {
+            "domain": domain,
+            "record_type": record_type,
+            "ttl_analysis": {},
+            "cache_recommendations": [],
+            "potential_issues": [],
+            "servers_analyzed": [],
+            "errors": []
+        }
+        
+        servers_to_test = [
+            ("Google Primary", "8.8.8.8"),
+            ("Cloudflare Primary", "1.1.1.1"),
+            ("Quad9", "9.9.9.9"),
+            ("OpenDNS", "208.67.222.222")
+        ]
+        
+        ttl_values = []
+        
+        try:
+            for server_name, server_ip in servers_to_test:
+                try:
+                    resolver = dns.resolver.Resolver()
+                    resolver.nameservers = [server_ip]
+                    resolver.timeout = 5
+                    resolver.lifetime = 10
+                    
+                    # First query to get initial TTL
+                    start_time = time.time()
+                    answer1 = resolver.resolve(domain, record_type)
+                    query_time = (time.time() - start_time) * 1000
+                    
+                    initial_ttl = answer1.rrset.ttl
+                    ttl_values.append(initial_ttl)
+                    
+                    # Second query after a short delay to check TTL reduction
+                    time.sleep(2)
+                    answer2 = resolver.resolve(domain, record_type)
+                    second_ttl = answer2.rrset.ttl
+                    
+                    server_analysis = {
+                        "server": server_name,
+                        "ip": server_ip,
+                        "initial_ttl": initial_ttl,
+                        "second_ttl": second_ttl,
+                        "ttl_reduction": initial_ttl - second_ttl,
+                        "query_time_ms": round(query_time, 2),
+                        "caching_behavior": "normal" if second_ttl < initial_ttl else "unusual"
+                    }
+                    
+                    result["ttl_analysis"][server_name] = server_analysis
+                    result["servers_analyzed"].append(server_name)
+                    
+                    # Check for potential cache poisoning indicators
+                    if abs(initial_ttl - second_ttl) > initial_ttl * 0.5:  # More than 50% difference
+                        result["potential_issues"].append(f"Unusual TTL behavior on {server_name}")
+                    
+                    self.log(f"Analyzed {server_name}: TTL {initial_ttl}→{second_ttl}", Fore.GREEN)
+                    
+                except Exception as e:
+                    result["errors"].append(f"Error testing {server_name} ({server_ip}): {str(e)}")
+            
+            # Generate recommendations based on TTL analysis
+            if ttl_values:
+                min_ttl = min(ttl_values)
+                max_ttl = max(ttl_values)
+                avg_ttl = sum(ttl_values) / len(ttl_values)
+                
+                result["ttl_summary"] = {
+                    "min_ttl": min_ttl,
+                    "max_ttl": max_ttl,
+                    "average_ttl": round(avg_ttl, 2),
+                    "consistency": "consistent" if max_ttl - min_ttl <= 60 else "inconsistent"
+                }
+                
+                # TTL recommendations
+                if avg_ttl < 300:  # 5 minutes
+                    result["cache_recommendations"].append("TTL is very low - consider increasing for better performance")
+                elif avg_ttl > 86400:  # 24 hours
+                    result["cache_recommendations"].append("TTL is very high - consider reducing for faster updates")
+                else:
+                    result["cache_recommendations"].append("TTL appears to be in optimal range")
+                
+                if max_ttl - min_ttl > 300:  # 5 minutes difference
+                    result["potential_issues"].append("Inconsistent TTL values across servers")
+            
+        except Exception as e:
+            result["errors"].append(f"DNS cache analysis error: {str(e)}")
+        
+        return result
+
+    def monitor_dns_health(self, domain: str, duration_minutes: int = 60, check_interval: int = 300) -> Dict:
+        """Monitor DNS health over time with real-time tracking"""
+        self.log(f"Starting DNS health monitoring for {domain} ({duration_minutes} minutes)", Fore.CYAN)
+        
+        result = {
+            "domain": domain,
+            "monitoring_duration_minutes": duration_minutes,
+            "check_interval_seconds": check_interval,
+            "start_time": datetime.now().isoformat(),
+            "checks_performed": [],
+            "alerts": [],
+            "summary": {},
+            "status": "running"
+        }
+        
+        # Create monitoring directory
+        monitor_dir = Path.home() / '.dns-validator' / 'monitoring'
+        monitor_dir.mkdir(parents=True, exist_ok=True)
+        
+        monitor_file = monitor_dir / f"{domain}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        
+        try:
+            end_time = datetime.now() + timedelta(minutes=duration_minutes)
+            check_count = 0
+            
+            while datetime.now() < end_time:
+                check_count += 1
+                check_time = datetime.now()
+                
+                self.log(f"Performing health check #{check_count} for {domain}", Fore.YELLOW)
+                
+                # Perform various DNS checks
+                delegation_result = self.check_delegation(domain)
+                propagation_result = self.check_propagation(domain)
+                
+                health_check = {
+                    "check_number": check_count,
+                    "timestamp": check_time.isoformat(),
+                    "delegation_valid": delegation_result.get("delegation_valid", False),
+                    "propagation_consistent": len(propagation_result.get("inconsistent_servers", [])) == 0,
+                    "total_errors": len(delegation_result.get("errors", [])) + len(propagation_result.get("errors", [])),
+                    "response_times": propagation_result.get("response_times", {}),
+                    "detected_issues": []
+                }
+                
+                # Detect issues and generate alerts
+                if not health_check["delegation_valid"]:
+                    issue = "DNS delegation failure detected"
+                    health_check["detected_issues"].append(issue)
+                    result["alerts"].append({
+                        "timestamp": check_time.isoformat(),
+                        "severity": "high",
+                        "message": issue
+                    })
+                
+                if not health_check["propagation_consistent"]:
+                    issue = "DNS propagation inconsistency detected"
+                    health_check["detected_issues"].append(issue)
+                    result["alerts"].append({
+                        "timestamp": check_time.isoformat(),
+                        "severity": "medium",
+                        "message": issue
+                    })
+                
+                if health_check["total_errors"] > 0:
+                    issue = f"{health_check['total_errors']} DNS errors detected"
+                    health_check["detected_issues"].append(issue)
+                    result["alerts"].append({
+                        "timestamp": check_time.isoformat(),
+                        "severity": "low",
+                        "message": issue
+                    })
+                
+                result["checks_performed"].append(health_check)
+                
+                # Save progress to file
+                with open(monitor_file, 'w') as f:
+                    json.dump(result, f, indent=2)
+                
+                # Check if we should continue
+                if datetime.now() >= end_time:
+                    break
+                
+                # Wait for next check
+                time.sleep(check_interval)
+            
+            # Generate summary
+            total_checks = len(result["checks_performed"])
+            successful_checks = sum(1 for check in result["checks_performed"] 
+                                  if check["delegation_valid"] and check["propagation_consistent"])
+            
+            result["summary"] = {
+                "total_checks": total_checks,
+                "successful_checks": successful_checks,
+                "success_rate": round((successful_checks / total_checks) * 100, 2) if total_checks > 0 else 0,
+                "total_alerts": len(result["alerts"]),
+                "monitoring_file": str(monitor_file)
+            }
+            
+            result["status"] = "completed"
+            result["end_time"] = datetime.now().isoformat()
+            
+            self.log(f"DNS health monitoring completed. Success rate: {result['summary']['success_rate']}%", 
+                    Fore.GREEN if result['summary']['success_rate'] > 95 else Fore.YELLOW)
+            
+        except KeyboardInterrupt:
+            result["status"] = "interrupted"
+            result["end_time"] = datetime.now().isoformat()
+            self.log("DNS health monitoring interrupted by user", Fore.YELLOW)
+        except Exception as e:
+            result["status"] = "error"
+            result["end_time"] = datetime.now().isoformat()
+            result["error"] = str(e)
+            self.log(f"DNS health monitoring error: {str(e)}", Fore.RED)
+        
+        # Final save
+        with open(monitor_file, 'w') as f:
+            json.dump(result, f, indent=2)
         
         return result
 
@@ -1524,6 +1879,178 @@ def test_credentials(provider, name, domain):
         
     except Exception as e:
         print(f"{Fore.RED}Error testing credentials: {e}{Style.RESET_ALL}")
+
+
+@cli.command()
+@click.argument('domain')
+@click.pass_context
+def dnssec(ctx, domain):
+    """Check DNSSEC validation status and security chain"""
+    validator = ctx.obj['validator']
+    result = validator.check_dnssec(domain)
+    
+    print(f"\n{Fore.CYAN}DNSSEC Validation Check for {domain}{Style.RESET_ALL}")
+    print("=" * 60)
+    
+    if result["dnssec_enabled"]:
+        print(f"{Fore.GREEN}✓ DNSSEC Status: ENABLED{Style.RESET_ALL}")
+    else:
+        print(f"{Fore.YELLOW}⚠ DNSSEC Status: NOT ENABLED{Style.RESET_ALL}")
+    
+    if result["ds_records"]:
+        print(f"\n{Fore.CYAN}DS Records in Parent Zone:{Style.RESET_ALL}")
+        for ds in result["ds_records"]:
+            print(f"  • {ds}")
+    
+    if result["dnskey_records"]:
+        print(f"\n{Fore.CYAN}DNSKEY Records:{Style.RESET_ALL}")
+        for dnskey in result["dnskey_records"]:
+            print(f"  • {dnskey}")
+    
+    if result["rrsig_records"]:
+        print(f"\n{Fore.CYAN}RRSIG Records (Signatures):{Style.RESET_ALL}")
+        for rrsig in result["rrsig_records"][:3]:  # Show first 3 to avoid clutter
+            print(f"  • {rrsig}")
+        if len(result["rrsig_records"]) > 3:
+            print(f"  • ... and {len(result['rrsig_records']) - 3} more")
+    
+    if result["validation_chain"]:
+        print(f"\n{Fore.GREEN}Validation Chain:{Style.RESET_ALL}")
+        for step in result["validation_chain"]:
+            print(f"  ✓ {step}")
+    
+    if result["warnings"]:
+        print(f"\n{Fore.YELLOW}Warnings:{Style.RESET_ALL}")
+        for warning in result["warnings"]:
+            print(f"  ⚠ {warning}")
+    
+    if result["errors"]:
+        print(f"\n{Fore.RED}Errors:{Style.RESET_ALL}")
+        for error in result["errors"]:
+            print(f"  ✗ {error}")
+
+
+@cli.command('reverse-dns')
+@click.argument('ip_address')
+@click.pass_context
+def reverse_dns(ctx, ip_address):
+    """Check reverse DNS (PTR) records and forward/reverse consistency"""
+    validator = ctx.obj['validator']
+    result = validator.check_reverse_dns(ip_address)
+    
+    print(f"\n{Fore.CYAN}Reverse DNS Check for {ip_address}{Style.RESET_ALL}")
+    print("=" * 50)
+    
+    if result["ptr_records"]:
+        print(f"{Fore.GREEN}✓ PTR Records Found:{Style.RESET_ALL}")
+        for ptr in result["ptr_records"]:
+            print(f"  • {ptr}")
+        
+        if result["forward_reverse_consistent"]:
+            print(f"\n{Fore.GREEN}✓ Forward/Reverse Consistency: VERIFIED{Style.RESET_ALL}")
+        else:
+            print(f"\n{Fore.YELLOW}⚠ Forward/Reverse Consistency: NOT VERIFIED{Style.RESET_ALL}")
+        
+        if result["forward_domains"]:
+            print(f"\n{Fore.CYAN}Forward Lookup Results:{Style.RESET_ALL}")
+            for ip in result["forward_domains"]:
+                print(f"  • {ip}")
+    else:
+        print(f"{Fore.RED}✗ No PTR Records Found{Style.RESET_ALL}")
+    
+    if result["warnings"]:
+        print(f"\n{Fore.YELLOW}Warnings:{Style.RESET_ALL}")
+        for warning in result["warnings"]:
+            print(f"  ⚠ {warning}")
+    
+    if result["errors"]:
+        print(f"\n{Fore.RED}Errors:{Style.RESET_ALL}")
+        for error in result["errors"]:
+            print(f"  ✗ {error}")
+
+
+@cli.command('cache-analysis')
+@click.argument('domain')
+@click.option('--type', '-t', default='A', help='DNS record type to analyze (default: A)')
+@click.pass_context
+def cache_analysis(ctx, domain, type):
+    """Analyze DNS caching behavior and TTL compliance"""
+    validator = ctx.obj['validator']
+    result = validator.analyze_dns_cache(domain, type)
+    
+    print(f"\n{Fore.CYAN}DNS Cache Analysis for {domain} ({type}){Style.RESET_ALL}")
+    print("=" * 60)
+    
+    if result["ttl_summary"]:
+        summary = result["ttl_summary"]
+        print(f"{Fore.CYAN}TTL Summary:{Style.RESET_ALL}")
+        print(f"  • Minimum TTL: {summary['min_ttl']} seconds")
+        print(f"  • Maximum TTL: {summary['max_ttl']} seconds")
+        print(f"  • Average TTL: {summary['average_ttl']} seconds")
+        print(f"  • Consistency: {summary['consistency']}")
+    
+    if result["ttl_analysis"]:
+        print(f"\n{Fore.CYAN}Server Analysis:{Style.RESET_ALL}")
+        for server_name, analysis in result["ttl_analysis"].items():
+            status_color = Fore.GREEN if analysis["caching_behavior"] == "normal" else Fore.YELLOW
+            print(f"  {status_color}• {server_name} ({analysis['ip']}){Style.RESET_ALL}")
+            print(f"    TTL: {analysis['initial_ttl']} → {analysis['second_ttl']} (reduction: {analysis['ttl_reduction']})")
+            print(f"    Query time: {analysis['query_time_ms']}ms")
+            print(f"    Behavior: {analysis['caching_behavior']}")
+    
+    if result["cache_recommendations"]:
+        print(f"\n{Fore.GREEN}Recommendations:{Style.RESET_ALL}")
+        for rec in result["cache_recommendations"]:
+            print(f"  ✓ {rec}")
+    
+    if result["potential_issues"]:
+        print(f"\n{Fore.YELLOW}Potential Issues:{Style.RESET_ALL}")
+        for issue in result["potential_issues"]:
+            print(f"  ⚠ {issue}")
+    
+    if result["errors"]:
+        print(f"\n{Fore.RED}Errors:{Style.RESET_ALL}")
+        for error in result["errors"]:
+            print(f"  ✗ {error}")
+
+
+@cli.command('health-monitor')
+@click.argument('domain')
+@click.option('--duration', '-d', default=60, type=int, help='Monitoring duration in minutes (default: 60)')
+@click.option('--interval', '-i', default=300, type=int, help='Check interval in seconds (default: 300)')
+@click.pass_context
+def health_monitor(ctx, domain, duration, interval):
+    """Monitor DNS health in real-time with alerting"""
+    validator = ctx.obj['validator']
+    
+    print(f"\n{Fore.CYAN}Starting DNS Health Monitoring for {domain}{Style.RESET_ALL}")
+    print(f"Duration: {duration} minutes | Check interval: {interval} seconds")
+    print("Press Ctrl+C to stop monitoring early")
+    print("=" * 60)
+    
+    try:
+        result = validator.monitor_dns_health(domain, duration, interval)
+        
+        print(f"\n{Fore.CYAN}Monitoring Summary:{Style.RESET_ALL}")
+        summary = result["summary"]
+        print(f"  • Total checks: {summary['total_checks']}")
+        print(f"  • Successful checks: {summary['successful_checks']}")
+        
+        success_rate = summary['success_rate']
+        rate_color = Fore.GREEN if success_rate > 95 else Fore.YELLOW if success_rate > 85 else Fore.RED
+        print(f"  • Success rate: {rate_color}{success_rate}%{Style.RESET_ALL}")
+        print(f"  • Total alerts: {summary['total_alerts']}")
+        print(f"  • Monitoring file: {summary['monitoring_file']}")
+        
+        if result["alerts"]:
+            print(f"\n{Fore.YELLOW}Recent Alerts:{Style.RESET_ALL}")
+            for alert in result["alerts"][-5:]:  # Show last 5 alerts
+                severity_color = Fore.RED if alert["severity"] == "high" else Fore.YELLOW
+                print(f"  {severity_color}• [{alert['severity'].upper()}] {alert['message']}{Style.RESET_ALL}")
+                print(f"    Time: {alert['timestamp']}")
+        
+    except KeyboardInterrupt:
+        print(f"\n{Fore.YELLOW}Monitoring interrupted by user{Style.RESET_ALL}")
 
 
 if __name__ == '__main__':

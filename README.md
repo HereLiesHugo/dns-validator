@@ -1,6 +1,85 @@
 # DNS Validator
 
-A comprehensive cross-platform CLI tool for DNS validation, featuring delegation checks, propagation testing, and DNS provider settings analysis.
+A comprehensive cross-platform CLI tool for DNS validation, featuring delegation checks, propa# Run all checks at once
+python dns_validator_cli.py full example.com
+
+# Advanced security and analysis features (NEW!)
+python#### `dnssec <domain>`
+🔐 **Check DNSSEC validation status and security chain (NEW!)**
+
+**Features:**
+- Validates complete DNSSEC chain
+- Checks DS records in parent zone
+- Verifies DNSKEY records
+- Analyzes RRSIG signatures
+- Validates DNSSEC authentication chain
+
+#### `reverse-dns <ip_address>`
+🔄 **Check reverse DNS (PTR) records and consistency (NEW!)**
+
+**Features:**
+- PTR record validation
+- Forward/reverse consistency checking
+- IPv4 and IPv6 support
+- Comprehensive reverse lookup analysis
+
+#### `cache-analysis <domain>`
+📊 **Analyze DNS caching behavior and TTL compliance (NEW!)**
+
+**Options:**
+- `--type, -t`: DNS record type to analyze (default: A)
+
+**Features:**
+- TTL compliance checking across multiple servers
+- Cache behavior analysis
+- Optimal TTL recommendations
+- Cache poisoning detection indicators
+- Performance optimization suggestions
+
+#### `health-monitor <domain>`
+🏥 **Monitor DNS health in real-time with alerting (NEW!)**
+
+**Options:**
+- `--duration, -d`: Monitoring duration in minutes (default: 60)
+- `--interval, -i`: Check interval in seconds (default: 300)
+
+**Features:**
+- Real-time DNS health monitoring
+- Automated alerting on failures
+- Historical tracking and logging
+- Comprehensive health metrics
+- Exportable monitoring reports
+
+#### `creds`
+🔐 **Manage API credentials for DNS providers**
+
+**Subcommands:**
+- `add <provider> <name>`: Add new credentials with secure encryption
+- `list`: Display all stored credentials (secrets masked)
+- `edit <provider> <name>`: Interactively edit existing credentials
+- `delete <provider> <name>`: Remove stored credentials
+- `test <provider> <name> <domain>`: Test credentials with API call
+- `export <file>`: Export credential structure (optional --include-secrets)
+- `clear`: Remove all stored credentials
+
+**Features:**
+- 🔒 AES-256 encryption for all sensitive data
+- 🏢 Multi-provider support (Cloudflare, AWS, Google Cloud, Azure, DigitalOcean)
+- 👥 Multiple credential sets per provider (staging, production, etc.)
+- 🔐 Interactive secure input for sensitive fields
+- 📁 Secure storage in `~/.dns-validator/` directory
+- 📤 Safe export/backup functionalitypy dnssec example.com
+python dns_validator_cli.py reverse-dns 192.168.1.1
+python dns_validator_cli.py cache-analysis example.com --type A
+python dns_validator_cli.py health-monitor example.com --duration 30 --interval 60
+
+# Manage API credentials (NEW!)
+python dns_validator_cli.py creds add Cloudflare production --api-token YOUR_TOKEN
+python dns_validator_cli.py creds list
+python dns_validator_cli.py provider example.com --provider cloudflare --cred-name production
+
+# Enable verbose output for any command
+python dns_validator_cli.py --verbose delegation example.comting, and DNS provider settings analysis.
 
 ![Python](https://img.shields.io/badge/python-3.7+-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
@@ -8,10 +87,22 @@ A comprehensive cross-platform CLI tool for DNS validation, featuring delegation
 
 ## Features
 
+### 🔍 **Core DNS Validation**
 - **DNS Delegation Check**: Verify DNS delegation and authoritative name servers
 - **Propagation Check**: Test DNS propagation across multiple public DNS servers
 - **Multi-Provider DNS Settings**: Detect and analyze DNS settings from 50+ providers including Cloudflare, AWS Route 53, Google Cloud DNS, Azure DNS, and more
-- **🔐 Secure Credential Management**: Encrypted storage and management of API keys for multiple providers
+
+### 🔐 **Security & DNSSEC**
+- **DNSSEC Validation**: Complete DNSSEC chain validation including DS, DNSKEY, and RRSIG records
+- **Secure Credential Management**: Encrypted storage and management of API keys for multiple providers
+- **Reverse DNS Validation**: PTR record validation with forward/reverse consistency checking
+
+### 📊 **Advanced Analysis**
+- **DNS Cache Analysis**: TTL compliance checking, cache behavior analysis, and optimization recommendations
+- **DNS Health Monitoring**: Real-time monitoring with alerting and historical tracking
+- **Performance Benchmarking**: Response time analysis across multiple DNS servers
+
+### 🛠 **User Experience**
 - **Verbose CLI Output**: Detailed logging and colored output for better debugging
 - **Cross-platform Compatibility**: Works on Windows, Linux, and macOS
 - **Concurrent Processing**: Fast parallel DNS queries for efficient testing
@@ -379,6 +470,26 @@ python dns_validator.py provider example.com --api-token your_token
 
 # Legacy Cloudflare check
 python dns_validator.py cloudflare example.com --api-token your_token
+```
+
+### Advanced DNS Security and Analysis Examples
+
+```bash
+# DNSSEC validation for security-conscious domains
+python dns_validator_cli.py dnssec cloudflare.com
+python dns_validator_cli.py dnssec --verbose your-secure-domain.com
+
+# Reverse DNS validation for mail servers and security
+python dns_validator_cli.py reverse-dns 8.8.8.8
+python dns_validator_cli.py reverse-dns 2001:4860:4860::8888
+
+# DNS cache analysis for performance optimization
+python dns_validator_cli.py cache-analysis example.com --type A
+python dns_validator_cli.py cache-analysis mail.example.com --type MX
+
+# Real-time DNS health monitoring
+python dns_validator_cli.py health-monitor example.com --duration 60 --interval 300
+python dns_validator_cli.py health-monitor critical-site.com --duration 1440 --interval 60  # 24 hours
 ```
 
 ### Credential Management Examples

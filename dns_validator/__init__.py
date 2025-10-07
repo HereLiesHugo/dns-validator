@@ -9,7 +9,7 @@ Contact: me@maturqu.com
 License: GNU AGPL v3.0
 """
 
-__version__ = "2.0.1"
+__version__ = "2.1.0"
 __author__ = "Matisse Urquhart"
 
 # Import main classes for easy access

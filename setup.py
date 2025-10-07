@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="dns-validator",
-    version="2.0.1",
+    version="2.1.0",
     author="Matisse Urquhart",
     author_email="me@maturqu.com",
     description="A comprehensive DNS validation tool with delegation, propagation, and provider settings checks",
@@ -43,6 +43,9 @@ setup(
         "google-cloud-dns>=0.34.0",
         "azure-mgmt-dns>=8.0.0",
         "azure-identity>=1.12.0",
+        "concurrent.futures>=3.1.1;python_version<'3.2'",
+        "pathlib>=1.0.1;python_version<'3.4'",
+        "ipaddress>=1.0.23;python_version<'3.3'",
     ],
     entry_points={
         "console_scripts": [

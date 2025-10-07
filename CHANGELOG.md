@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-10-07
+
+### Added
+- 🔐 **DNSSEC Validation System**
+  - Complete DNSSEC chain validation including DS, DNSKEY, and RRSIG records
+  - Parent zone DS record verification
+  - DNSSEC authentication chain analysis
+  - New `dnssec <domain>` command for comprehensive DNSSEC checking
+
+- 🔄 **Reverse DNS Validation**
+  - PTR record validation for IPv4 and IPv6 addresses
+  - Forward/reverse consistency checking
+  - Comprehensive reverse lookup analysis
+  - New `reverse-dns <ip_address>` command
+
+- 📊 **DNS Cache Analysis**
+  - TTL compliance checking across multiple DNS servers
+  - Cache behavior analysis and optimization recommendations
+  - Cache poisoning detection indicators
+  - Performance optimization suggestions
+  - New `cache-analysis <domain>` command with record type options
+
+- 🏥 **DNS Health Monitoring**
+  - Real-time DNS health monitoring with configurable intervals
+  - Automated alerting system for DNS failures and inconsistencies
+  - Historical tracking and comprehensive logging
+  - Exportable monitoring reports with JSON format
+  - New `health-monitor <domain>` command with duration and interval options
+
+### Enhanced
+- Added support for DNSSEC-related DNS record types
+- Improved error handling and reporting across all features
+- Enhanced IPv6 support for reverse DNS operations
+- Better TTL analysis with statistical summaries
+
+### Dependencies
+- Added `ipaddress` module support for IP validation
+- Enhanced `dnspython` usage for DNSSEC operations
+- Improved JSON handling for monitoring data
+
 ## [2.0.1] - 2025-10-07
 
 ### Fixed

@@ -3,53 +3,53 @@
 - Check server location
 
 - DNSSEC validation
-# Validate DNSSEC chain
-    # Check DS records in parent zone
-    # Verify RRSIG signatures
-    # Check DNSKEY records
+Validate DNSSEC chain
+	Check DS records in parent zone
+	Verify RRSIG signatures
+	Check DNSKEY records
 - DNS Health Monitoring
-# Real-time propagation monitoring
-    # Alert on changes or failures
-    # Historical tracking
+Real-time propagation monitoring
+	Alert on changes or failures
+	Historical tracking
 - Reverse DNS (PTR) validation
- # PTR record validation
-    # Forward/reverse consistency check
+	PTR record validation
+	Forward/reverse consistency check
 - DNS Cache analysis
-# TTL compliance checking
-    # Cache poisoning detection
-    # Optimal TTL recommendations
+	TTL compliance checking
+	Cache poisoning detection
+	Optimal TTL recommendations
 
 - Geolocation DNS Testing
-# Use DNS servers from different countries
-    # GeoDNS routing validation
-    # CDN endpoint verification
+Use DNS servers from different countries
+    GeoDNS routing validation
+    CDN endpoint verification
 - Load Balancer Health Checks
-# Multiple A record health
-    # Weighted/round-robin validation
-    # Failover testing
+Multiple A record health
+    Weighted/round-robin validation
+    Failover testing
 - IPv6 Support Enhancement
-# AAAA record validation
-    # IPv6-only DNS server testing
-    # Dual-stack configuration check
+AAAA record validation
+    IPv6-only DNS server testing
+    Dual-stack configuration check
 
 - Performance Benchmarking
-# Response time statistics
-    # Performance comparison across providers
-    # Latency heatmaps
+Response time statistics
+    Performance comparison across providers
+    Latency heatmaps
 - Historical Data Tracking
-# Change detection
-    # Historical record keeping
-    # Rollback recommendations
+Change detection
+    Historical record keeping
+    Rollback recommendations
 - Export/Import Configurations
 
 - DNS Security Analysis
-# Open resolver detection
-    # DNS amplification vulnerability
-    # Subdomain enumeration protection
+Open resolver detection
+    DNS amplification vulnerability
+    Subdomain enumeration protection
 - Certificate Integration
-# Certificate transparency logs
-    # CAA record validation
-    # SSL/TLS configuration check
+Certificate transparency logs
+    CAA record validation
+    SSL/TLS configuration check
 
 - Namecheap API Integration
 - GoDaddy API Integration
@@ -58,29 +58,29 @@
 - OVH API Integration
 
 - DNS Registrar Integration
-# Registrar lock status
-    # Domain expiration warnings
-    # Transfer auth code management
+Registrar lock status
+    Domain expiration warnings
+    Transfer auth code management
 
 - Web Dashboard/GUI
-# Flask/FastAPI web interface
-    # Real-time monitoring dashboard
-    # Historical charts and graphs
+Flask/FastAPI web interface
+    Real-time monitoring dashboard
+    Historical charts and graphs
 
 - Scheduled Checks
-# Cron-like scheduling
-    # Automated reporting
-    # Threshold-based alerting
+Cron-like scheduling
+    Automated reporting
+    Threshold-based alerting
 - Bulk Domain Processing
-# Parallel processing
-    # Progress tracking
-    # Batch reporting
+Parallel processing
+    Progress tracking
+    Batch reporting
 
 - DNS Query Analytics
-# Query type distribution
-    # Geographic query analysis
-    # Peak usage times
+Query type distribution
+    Geographic query analysis
+    Peak usage times
 - Comparison Tools
-# Side-by-side comparison
-    # Best practice recommendations
-    # Configuration drift detection
+Side-by-side comparison
+    Best practice recommendations
+    Configuration drift detection
