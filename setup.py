@@ -6,8 +6,8 @@ with open("README.md", "r", encoding="utf-8") as fh:
 setup(
     name="dns-validator",
     version="2.0.1",
-    author="DNS Validator Team",
-    author_email="contact@dnsvalidator.com",
+    author="Matisse Urquhart",
+    author_email="me@maturqu.com",
     description="A comprehensive DNS validation tool with delegation, propagation, and provider settings checks",
     long_description=long_description,
     long_description_content_type="text/markdown",
