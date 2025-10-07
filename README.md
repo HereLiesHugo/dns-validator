@@ -1,228 +1,47 @@
 # DNS Validator
 
-A comprehensive cross-platform CLI tool for DNS validation, featuring delegation checks, propa# Run all checks at once
-python dns_validator_cli.py full example.com
-
-# Advanced security and analysis features (NEW!)
-python#### `dnssec <domain>`
-🔐 **Check DNSSEC validation status and security chain (NEW!)**
-
-**Features:**
-- Validates complete DNSSEC chain
-- Checks DS records in parent zone
-- Verifies DNSKEY records
-- Analyzes RRSIG signatures
-- Validates DNSSEC authentication chain
-
-#### `reverse-dns <ip_address>`
-🔄 **Check reverse DNS (PTR) records and consistency (NEW!)**
-
-**Features:**
-- PTR record validation
-- Forward/reverse consistency checking
-- IPv4 and IPv6 support
-- Comprehensive reverse lookup analysis
-
-#### `cache-analysis <domain>`
-📊 **Analyze DNS caching behavior and TTL compliance (NEW!)**
-
-**Options:**
-- `--type, -t`: DNS record type to analyze (default: A)
-
-**Features:**
-- TTL compliance checking across multiple servers
-- Cache behavior analysis
-- Optimal TTL recommendations
-- Cache poisoning detection indicators
-- Performance optimization suggestions
-
-#### `health-monitor <domain>`
-🏥 **Monitor DNS health in real-time with alerting (NEW!)**
-
-**Options:**
-- `--duration, -d`: Monitoring duration in minutes (default: 60)
-- `--interval, -i`: Check interval in seconds (default: 300)
-
-**Features:**
-- Real-time DNS health monitoring
-- Automated alerting on failures
-- Historical tracking and logging
-- Comprehensive health metrics
-- Exportable monitoring reports
-
-#### `bulk <domains_file>` 
-🚀 **Process multiple domains in parallel with progress tracking (NEW!)**
-
-**Options:**
-- `--checks, -c`: DNS checks to perform (delegation, propagation, provider, dnssec, security, certificate, ipv6, reverse-dns)
-- `--workers, -w`: Number of parallel workers (default: 10)
-- `--output, -o`: Output file for batch report (supports .json, .html, .csv)
-- `--format, -f`: Output format (overrides file extension)
-
-**Features:**
-- **Parallel processing** with configurable worker threads
-- **Real-time progress tracking** with live status updates
-- **Comprehensive batch reporting** in multiple formats
-- **Error handling and recovery** with detailed failure logs
-- **Performance metrics** including processing speed and success rates
-
-#### `create-bulk-file <output_file>` 
-📝 **Create a domains file for bulk processing (NEW!)**
-
-**Options:**
-- `--from-clipboard`: Read domains from clipboard
-
-**Features:**
-- **Domain validation** and automatic cleanup
-- **Flexible input** from command line or clipboard
-- **Formatted output** with comments and metadata
-
-#### `creds`
-🔐 **Manage API credentials for DNS providers**
-
-**Subcommands:**
-- `add <provider> <name>`: Add new credentials with secure encryption
-- `list`: Display all stored credentials (secrets masked)
-- `edit <provider> <name>`: Interactively edit existing credentials
-- `delete <provider> <name>`: Remove stored credentials
-- `test <provider> <name> <domain>`: Test credentials with API call
-- `export <file>`: Export credential structure (optional --include-secrets)
-- `clear`: Remove all stored credentials
-
-**Features:**
-- 🔒 AES-256 encryption for all sensitive data
-- 🏢 Multi-provider support (Cloudflare, AWS, Google Cloud, Azure, DigitalOcean)
-- 👥 Multiple credential sets per provider (staging, production, etc.)
-- 🔐 Interactive secure input for sensitive fields
-- 📁 Secure storage in `~/.dns-validator/` directory
-- 📤 Safe export/backup functionality
-
-#### `geo-dns <domain>`
-🌍 **Test DNS resolution from different geographic locations (NEW!)**
-
-**Features:**
-- DNS resolution testing from 15+ global locations
-- GeoDNS routing validation and detection
-- CDN endpoint identification and analysis
-- Response time comparison across regions
-- Geographic consistency checking
-- Routing pattern analysis
-
-#### `load-balancer <domain>`
-⚖️ **Check load balancer health and validate multiple A records (NEW!)**
-
-**Features:**
-- Multiple A record health validation
-- TCP connectivity testing on common ports
-- HTTP/HTTPS endpoint health checks
-- Load balancing pattern analysis (round-robin vs weighted)
-- Failover capability assessment
-- Redundancy level evaluation
-- Distribution consistency testing
-
-#### `ipv6-check <domain>`
-📡 **Enhanced IPv6 support validation including dual-stack configuration (NEW!)**
-
-**Features:**
-- AAAA record validation and analysis
-- IPv6-only DNS server testing (6 major providers)
-- Dual-stack configuration verification
-- IPv6 connectivity testing (ping + TCP)
-- DNS-over-IPv6 functionality validation
-- IPv6 readiness scoring (0-100)
-- Configuration recommendations
-- Forward/reverse IPv6 consistency
-
-#### `security-analysis <domain>`
-🔒 **Comprehensive DNS security analysis including vulnerabilities and threats (NEW!)**
-
-**Features:**
-- Open resolver detection and testing
-- DNS amplification vulnerability assessment
-- Subdomain enumeration protection analysis
-- Enhanced DNSSEC security evaluation
-- Security scoring system (0-100)
-- Vulnerability identification and classification
-- Comprehensive security recommendations
-- Risk level assessment and mitigation guidance
-
-#### `certificate-analysis <domain>`
-🏆 **Certificate and SSL/TLS analysis with CT logs and CAA validation (NEW!)**
-
-**Features:**
-- Certificate Transparency log monitoring
-- CAA (Certificate Authority Authorization) record validation
-- SSL/TLS configuration analysis and grading
-- Certificate chain validation and trust verification
-- SSL/TLS protocol and cipher suite evaluation
-- Certificate expiration and validity checking
-- Security score calculation and recommendations
-- Certificate authority compliance verification
-
-## Usage Examples
-
-```bash
-# Basic DNS validation
-python dns_validator_cli.py check example.com
-
-# Advanced security and analysis features
-python dns_validator_cli.py dnssec example.com
-python dns_validator_cli.py reverse-dns 192.168.1.1
-python dns_validator_cli.py cache-analysis example.com --type A
-python dns_validator_cli.py health-monitor example.com --duration 30 --interval 60
-
-# Geographic and load balancer testing (NEW!)
-python dns_validator_cli.py geo-dns example.com
-python dns_validator_cli.py load-balancer cloudflare.com
-python dns_validator_cli.py ipv6-check google.com
-
-# Security and certificate analysis (NEW!)
-python dns_validator_cli.py security-analysis example.com
-python dns_validator_cli.py certificate-analysis example.com
-
-# Manage API credentials (NEW!)
-python dns_validator_cli.py creds add Cloudflare production --api-token YOUR_TOKEN
-python dns_validator_cli.py creds list
-python dns_validator_cli.py provider example.com --provider cloudflare --cred-name production
-
-# Enable verbose output for any command
-python dns_validator_cli.py --verbose delegation example.comting, and DNS provider settings analysis.
+A comprehensive cross-platform CLI tool for DNS validation, security analysis, and provider management with advanced features for enterprise environments.
 
 ![Python](https://img.shields.io/badge/python-3.7+-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
 ![License](https://img.shields.io/badge/license-GNU%20AGPLv3-blue.svg)
+![PyPI](https://img.shields.io/badge/PyPI-dns--validator-blue.svg)
 
-## Features
+## 📋 Table of Contents
 
-### 🔍 **Core DNS Validation**
-- **DNS Delegation Check**: Verify DNS delegation and authoritative name servers
-- **Propagation Check**: Test DNS propagation across multiple public DNS servers
-- **Multi-Provider DNS Settings**: Detect and analyze DNS settings from 50+ providers including Cloudflare, AWS Route 53, Google Cloud DNS, Azure DNS, and more
+- [Installation](#-installation)
+- [Quick Start](#-quick-start)
+- [Features Overview](#-features-overview)
+- [Command Reference](#-command-reference)
+- [Bulk Processing](#-bulk-processing)
+- [Security Features](#-security-features)
+- [API Integration](#-api-integration)
+- [Supported Providers](#-supported-providers)
+- [Advanced Usage](#-advanced-usage)
+- [Examples](#-examples)
+- [Troubleshooting](#-troubleshooting)
+- [Contributing](#-contributing)
 
-### 🔐 **Security & DNSSEC**
-- **DNSSEC Validation**: Complete DNSSEC chain validation including DS, DNSKEY, and RRSIG records
-- **DNS Security Analysis**: Open resolver detection, amplification vulnerability assessment, subdomain protection
-- **Certificate Integration**: Certificate Transparency logs, CAA record validation, SSL/TLS configuration analysis
-- **Security Scoring**: Comprehensive 0-100 security scoring with vulnerability classification
-- **Secure Credential Management**: Encrypted storage and management of API keys for multiple providers
-- **Reverse DNS Validation**: PTR record validation with forward/reverse consistency checking
+## 🚀 Installation
 
-### 📊 **Advanced Analysis**
-- **DNS Cache Analysis**: TTL compliance checking, cache behavior analysis, and optimization recommendations
-- **DNS Health Monitoring**: Real-time monitoring with alerting and historical tracking
-- **Performance Benchmarking**: Response time analysis across multiple DNS servers
-- **DNS Query Analytics**: Real-time query type distribution, geographic analysis, and temporal pattern detection
-- **Advanced Reporting**: Multi-format analytics reports (executive, technical, geographic, performance)
-- **DNS Insights Engine**: Intelligent pattern recognition with baseline establishment and anomaly detection
+### Method 1: pip install (Recommended)
 
-### 🛠 **User Experience**
-- **Verbose CLI Output**: Detailed logging and colored output for better debugging
-- **Cross-platform Compatibility**: Works on Windows, Linux, and macOS
-- **Concurrent Processing**: Fast parallel DNS queries for efficient testing
+```bash
+# Install from PyPI
+pip install dns-validator
 
-## Installation
+# Verify installation
+dns-validator --help
+```
 
-### Method 1: Direct Installation (Recommended)
+**Available commands after installation:**
+```bash
+dns-validator [command] [options]    # Primary command
+dnsval [command] [options]           # Short alias
+python -m dns_validator [command]    # Module execution
+```
+
+### Method 2: Clone Repository
 
 ```bash
 # Clone the repository
@@ -232,733 +51,842 @@ cd dns-validator
 # Install dependencies
 pip install -r requirements.txt
 
-# Make the script executable (Linux/macOS)
-chmod +x dns_validator.py
+# Run directly
+python dns_validator_cli.py [command] [options]
 ```
 
-### Method 2: Package Installation (pip)
+### System Requirements
+
+- **Python**: 3.7 or higher
+- **Operating Systems**: Windows, Linux, macOS
+- **Internet Connection**: Required for DNS queries and API calls
+
+## ⚡ Quick Start
 
 ```bash
-# Install from PyPI (when available)
-pip install dns-validator
-
-# Install from GitHub
-pip install git+https://github.com/HereLiesHugo/dns-validator.git
-
-# Install in development mode
-git clone https://github.com/HereLiesHugo/dns-validator.git
-cd dns-validator
-pip install -e .
-```
-
-## Usage
-
-### Execution Methods
-
-The DNS Validator can be executed in multiple ways:
-
-1. **Via pip installation (recommended):**
-   ```bash
-   dns-validator [command] [options]
-   dnsval [command] [options]  # Short alias
-   ```
-
-2. **Direct script execution:**
-   ```bash
-   python dns_validator_cli.py [command] [options]
-   ```
-
-3. **As Python module:**
-   ```bash
-   python -m dns_validator [command] [options]
-   ```
-
-### Basic Commands
-
-```bash
-# Check DNS delegation (direct script execution)
-python dns_validator_cli.py delegation example.com
-
-# Or if installed via pip
+# Basic DNS validation
 dns-validator delegation example.com
 
-# Check DNS propagation (A record)
-python dns_validator.py propagation example.com
+# Check DNS propagation across multiple servers
+dns-validator propagation example.com
 
-# Check propagation for specific record type
-python dns_validator.py propagation example.com --type MX
+# Comprehensive security analysis
+dns-validator security-analysis example.com
 
-# Check propagation with expected value validation
-python dns_validator.py propagation example.com --expected "192.168.1.1"
+# Bulk processing multiple domains
+dns-validator bulk domains.txt --output report.html
 
-# Detect DNS providers
-python dns_validator.py providers example.com
-
-# List all supported providers
-python dns_validator.py list-providers
-
-# Check provider settings (with API integration)
-python dns_validator.py provider example.com --api-token your_token
-
-# Check Cloudflare settings (legacy command)
-python dns_validator.py cloudflare example.com --api-token your_cf_token
-
-# Run all checks at once
-python dns_validator.py full example.com
-
-# Manage API credentials (NEW!)
-python dns_validator.py creds add Cloudflare production --api-token YOUR_TOKEN
-python dns_validator.py creds list
-python dns_validator.py provider example.com --provider cloudflare --cred-name production
-
-# Enable verbose output for any command
-python dns_validator.py --verbose delegation example.com
+# Manage API credentials securely
+dns-validator creds add Cloudflare production --interactive
 ```
 
-### Bulk Processing Examples (NEW!)
+## ✨ Features Overview
 
-```bash
-# Create domains file from command line
-dns-validator create-bulk-file my-domains.txt example.com google.com github.com cloudflare.com
+### 🔍 **Core DNS Validation**
+- **DNS Delegation**: Verify authoritative nameservers and delegation chains
+- **Propagation Testing**: Check DNS propagation across 8+ major public DNS servers
+- **Provider Detection**: Automatically identify DNS providers from 50+ supported services
+- **Multi-Record Support**: A, AAAA, CNAME, MX, NS, TXT, SOA record validation
 
-# Create domains file from clipboard
-dns-validator create-bulk-file domains.txt --from-clipboard
+### 🔐 **Security & DNSSEC**
+- **DNSSEC Validation**: Complete DNSSEC chain analysis with DS, DNSKEY, RRSIG verification
+- **Security Analysis**: Open resolver detection, amplification vulnerability assessment
+- **Certificate Integration**: SSL/TLS analysis, Certificate Transparency monitoring, CAA validation
+- **Reverse DNS**: PTR record validation with forward/reverse consistency checking
+- **Security Scoring**: Comprehensive 0-100 security scoring system
 
-# Basic bulk processing (delegation + propagation)
-dns-validator bulk my-domains.txt
+### 🌍 **Advanced Analysis**
+- **Geographic DNS**: Test resolution from 15+ global locations with GeoDNS detection
+- **Load Balancer Health**: Multi-endpoint health validation and failover assessment  
+- **IPv6 Readiness**: Dual-stack configuration analysis with 0-100 scoring
+- **Cache Analysis**: TTL compliance and cache behavior optimization
+- **Health Monitoring**: Real-time DNS monitoring with alerting capabilities
 
-# Full security analysis for multiple domains
-dns-validator bulk my-domains.txt \
-  --checks delegation \
-  --checks propagation \
-  --checks provider \
-  --checks dnssec \
-  --checks security \
-  --checks certificate
+### 🚀 **Enterprise Features**
+- **Bulk Processing**: Parallel processing of multiple domains with progress tracking
+- **Secure Credentials**: AES-256 encrypted API key management for multiple providers
+- **Multiple Output Formats**: JSON, HTML, CSV reporting for automation and analysis
+- **API Integration**: Deep integration with 10+ DNS provider APIs
+- **Cross-Platform**: Native support for Windows, Linux, and macOS
 
-# High-performance processing with custom workers
-dns-validator bulk large-domain-list.txt \
-  --workers 25 \
-  --checks delegation \
-  --checks propagation \
-  --output results.html
-
-# Generate comprehensive JSON report
-dns-validator bulk domains.txt \
-  --checks delegation \
-  --checks security \
-  --checks ipv6 \
-  --output detailed-report.json
-
-# Quick CSV report for spreadsheet analysis
-dns-validator bulk company-domains.txt \
-  --output quick-report.csv \
-  --format csv
-```
-
-### Advanced Usage Examples
-
-```bash
-# Comprehensive check with all options
-python dns_validator.py full example.com \
-  --type A \
-  --expected "192.168.1.1" \
-  --api-token your_cloudflare_token
-
-# Check MX record propagation
-python dns_validator.py propagation example.com --type MX --verbose
-
-# Validate CNAME record
-python dns_validator.py propagation subdomain.example.com --type CNAME
-```
-
-### DNS Query Analytics Examples (NEW!)
-
-```bash
-# Basic query analytics (5 minutes of data collection)
-dns-validator query-analytics example.com
-
-# Comprehensive analytics with geographic analysis
-dns-validator query-analytics example.com \
-  --duration 900 \
-  --interval 10 \
-  --geographic \
-  --performance \
-  --output analytics-data.json
-
-# Custom query types and resolvers
-dns-validator query-analytics example.com \
-  --query-types A,AAAA,MX,NS,TXT,CNAME,SOA \
-  --resolvers 8.8.8.8,1.1.1.1,9.9.9.9 \
-  --duration 600
-
-# Generate executive summary report
-dns-validator analytics-report analytics-data.json \
-  --format executive \
-  --output summary-report.md \
-  --include-charts
-
-# Technical deep-dive report
-dns-validator analytics-report analytics-data.json \
-  --format technical \
-  --output tech-analysis.html \
-  --detailed
-
-# Geographic optimization report
-dns-validator analytics-report analytics-data.json \
-  --format geographic \
-  --output geo-analysis.txt
-
-# Performance monitoring report with alerts
-dns-validator analytics-report analytics-data.json \
-  --format performance \
-  --threshold 50 \
-  --timeframe 24h
-
-# Quick DNS insights (1 minute analysis)
-dns-validator dns-insights example.com --quick
-
-# Comprehensive insights with baseline establishment
-dns-validator dns-insights example.com \
-  --comprehensive \
-  --baseline \
-  --export-insights \
-  --alert-thresholds
-
-# Compare current performance with historical data
-dns-validator dns-insights example.com \
-  --compare previous-insights.json \
-  --export-insights current-insights.json
-```
-
-## Command Reference
+## 📚 Command Reference
 
 ### Global Options
 
-- `--verbose, -v`: Enable verbose output with detailed logging
+```bash
+--verbose, -v    # Enable detailed output and debugging information
+--help, -h       # Show help message for any command
+```
 
-### Commands
+### Core DNS Commands
 
 #### `delegation <domain>`
-Check DNS delegation for a domain.
+Verify DNS delegation and authoritative nameservers.
+
+```bash
+# Basic delegation check
+dns-validator delegation example.com
+
+# Verbose delegation analysis
+dns-validator --verbose delegation example.com
+```
 
 **Features:**
-- Validates authoritative name servers
-- Checks parent delegation
-- Identifies delegation issues
+- Validates authoritative nameservers
+- Checks parent delegation consistency  
+- Identifies delegation chain issues
+- Reports nameserver response times
 
 #### `propagation <domain>`
-Check DNS propagation across multiple DNS servers.
+Test DNS propagation across multiple public DNS servers.
+
+```bash
+# Check A record propagation
+dns-validator propagation example.com
+
+# Check specific record type
+dns-validator propagation example.com --type MX
+
+# Validate against expected value
+dns-validator propagation example.com --expected "192.168.1.1"
+```
 
 **Options:**
-- `--type, -t`: DNS record type (default: A)
-- `--expected, -e`: Expected value to validate against
+- `--type, -t`: Record type (A, AAAA, CNAME, MX, NS, TXT, SOA)
+- `--expected, -e`: Expected value for validation
 
 **Features:**
-- Tests 8 major public DNS servers (Google, Cloudflare, Quad9, etc.)
+- Tests 8+ major public DNS servers (Google, Cloudflare, Quad9, etc.)
 - Concurrent queries for fast results
 - Consistency checking across servers
 - Response time measurement
 
 #### `providers <domain>`
-Detect DNS providers for a domain.
+Detect and analyze DNS providers for a domain.
+
+```bash
+# Detect DNS providers
+dns-validator providers example.com
+
+# List all supported providers  
+dns-validator list-providers
+```
 
 **Features:**
 - Identifies primary and secondary DNS providers
-- Shows all detected providers
-- Lists nameserver details
+- Shows provider detection confidence
+- Lists nameserver details and patterns
 
-#### `list-providers`
-List all supported DNS providers.
+#### `full <domain>`
+Run comprehensive DNS validation including all checks.
+
+```bash
+# Complete validation suite
+dns-validator full example.com
+
+# Full check with specific record type
+dns-validator full example.com --type A --expected "1.2.3.4"
+```
 
 **Features:**
-- Shows 50+ supported DNS providers organized by category
-- Indicates API integration status
-- Displays detection patterns
+- Combines delegation, propagation, and provider checks
+- Comprehensive validation report
+- Summary of all issues found
+- Recommended remediation actions
 
-#### `provider <domain>`
-Check DNS provider settings with API integration.
+### Security Commands
+
+#### `dnssec <domain>`
+Comprehensive DNSSEC validation and security analysis.
+
+```bash
+# Basic DNSSEC validation
+dns-validator dnssec example.com
+
+# Detailed DNSSEC analysis
+dns-validator --verbose dnssec cloudflare.com
+```
+
+**Features:**
+- Complete DNSSEC chain validation
+- DS record verification in parent zone
+- DNSKEY and RRSIG signature analysis
+- DNSSEC authentication chain verification
+- Algorithm strength assessment
+
+#### `security-analysis <domain>`
+Comprehensive DNS security vulnerability assessment.
+
+```bash
+# Security analysis with scoring
+dns-validator security-analysis example.com
+
+# Detailed vulnerability breakdown
+dns-validator --verbose security-analysis corporate.com
+```
+
+**Features:**
+- Open resolver detection and testing
+- DNS amplification vulnerability assessment
+- Subdomain enumeration protection analysis
+- Security scoring (0-100 points)
+- Vulnerability classification and remediation guidance
+
+#### `certificate-analysis <domain>`
+SSL/TLS certificate and Certificate Authority validation.
+
+```bash
+# Certificate and CAA analysis
+dns-validator certificate-analysis example.com
+
+# Comprehensive certificate chain analysis
+dns-validator --verbose certificate-analysis secure-site.com
+```
+
+**Features:**
+- Certificate Transparency log monitoring
+- CAA record validation and compliance
+- SSL/TLS configuration grading (A-F scale)
+- Certificate chain validation
+- Expiration tracking and renewal alerts
+
+#### `reverse-dns <ip_address>`
+Reverse DNS validation and consistency checking.
+
+```bash
+# IPv4 reverse DNS check
+dns-validator reverse-dns 8.8.8.8
+
+# IPv6 reverse DNS validation
+dns-validator reverse-dns 2001:4860:4860::8888
+```
+
+**Features:**
+- PTR record validation for IPv4 and IPv6
+- Forward/reverse consistency verification
+- Comprehensive reverse lookup analysis
+- Mail server validation support
+
+### Advanced Analysis Commands
+
+#### `geo-dns <domain>`
+Test DNS resolution from multiple geographic locations.
+
+```bash
+# Global DNS resolution testing
+dns-validator geo-dns example.com
+
+# Detailed geographic analysis
+dns-validator --verbose geo-dns microsoft.com
+```
+
+**Features:**
+- Resolution testing from 15+ global locations
+- GeoDNS routing detection and validation
+- CDN endpoint identification
+- Response time comparison across regions
+- Geographic consistency analysis
+
+#### `load-balancer <domain>`
+Health validation for load-balanced DNS configurations.
+
+```bash
+# Load balancer health assessment
+dns-validator load-balancer cloudflare.com
+
+# Comprehensive endpoint analysis
+dns-validator --verbose load-balancer aws.com
+```
+
+**Features:**
+- Multiple A record endpoint health validation
+- TCP connectivity testing (ports 80, 443, 22, 21, 25, 53)
+- HTTP/HTTPS endpoint health verification
+- Load balancing pattern analysis
+- Failover capability assessment
+
+#### `ipv6-check <domain>`
+IPv6 readiness assessment and dual-stack validation.
+
+```bash
+# IPv6 readiness scoring
+dns-validator ipv6-check example.com
+
+# Complete IPv6 connectivity analysis
+dns-validator --verbose ipv6-check github.com
+```
+
+**Features:**
+- AAAA record validation and analysis
+- IPv6-only DNS server testing
+- Dual-stack configuration verification
+- IPv6 connectivity testing (ping + TCP)
+- Readiness scoring (0-100 points)
+
+#### `cache-analysis <domain>`
+DNS caching behavior analysis and optimization.
+
+```bash
+# TTL and caching analysis
+dns-validator cache-analysis example.com
+
+# Specific record type analysis
+dns-validator cache-analysis mail.example.com --type MX
+```
 
 **Options:**
-- `--provider`: Specify provider to check
-- `--api-token`: API token for provider integration
-- `--api-secret`: API secret for providers that require it
-- `--access-key`: Access key for AWS Route 53
-- `--secret-key`: Secret key for AWS Route 53
-- `--service-account`: Service account file for Google Cloud DNS
+- `--type, -t`: DNS record type to analyze (default: A)
 
 **Features:**
-- Auto-detects DNS provider
+- TTL compliance checking across servers
+- Cache behavior analysis and recommendations
+- Cache poisoning detection indicators
+- Performance optimization suggestions
+
+#### `health-monitor <domain>`
+Real-time DNS health monitoring with alerting.
+
+```bash
+# Basic health monitoring (60 minutes)
+dns-validator health-monitor example.com
+
+# Custom monitoring duration and intervals
+dns-validator health-monitor critical-site.com --duration 1440 --interval 60
+```
+
+**Options:**
+- `--duration, -d`: Monitoring duration in minutes (default: 60)
+- `--interval, -i`: Check interval in seconds (default: 300)
+
+**Features:**
+- Real-time DNS health monitoring
+- Automated alerting on failures
+- Historical tracking and logging
+- Exportable monitoring reports
+
+### Provider API Integration
+
+#### `provider <domain>`
+Deep DNS provider analysis with API integration.
+
+```bash
+# Auto-detect provider and analyze
+dns-validator provider example.com
+
+# Use stored credentials
+dns-validator provider example.com --provider cloudflare --cred-name production
+
+# Direct API usage (less secure)
+dns-validator provider example.com --api-token YOUR_TOKEN
+```
+
+**Options:**
+- `--provider`: Specify provider (cloudflare, aws, azure, gcp, etc.)
+- `--cred-name`: Use stored credential set
+- `--api-token`: Direct API token (various providers)
+- `--access-key`: AWS access key
+- `--secret-key`: AWS secret key
+- `--service-account`: Google Cloud service account file
+
+**Features:**
+- Automatic provider detection
 - API integration for detailed settings
 - DNS record retrieval and analysis
 - Provider-specific configuration display
 
-#### `cloudflare <domain>`
-Check Cloudflare DNS settings (legacy command).
+### Credential Management
 
-**Options:**
-- `--api-token`: Cloudflare API token for detailed information
+#### `creds` - Secure API Credential Management
 
-**Features:**
-- Detects Cloudflare nameserver usage
-- Retrieves zone settings (with API token)
-- Lists all DNS records with proxy status
-- Shows security and performance settings
-
-#### `full <domain>`
-Perform all DNS checks in sequence.
-
-**Options:**
-- `--type, -t`: DNS record type for propagation check
-- `--expected, -e`: Expected value for validation
-- `--api-token`: Cloudflare API token
-
-**Features:**
-- Comprehensive validation report
-- Summary of all issues found
-- Recommended actions
-
-#### `creds`
-🔐 **Manage API credentials for DNS providers (NEW!)**
-
-**Subcommands:**
-- `add <provider> <name>`: Add new credentials with secure encryption
-- `list`: Display all stored credentials (secrets masked)
-- `edit <provider> <name>`: Interactively edit existing credentials
-- `delete <provider> <name>`: Remove stored credentials
-- `test <provider> <name> <domain>`: Test credentials with API call
-- `export <file>`: Export credential structure (optional --include-secrets)
-- `clear`: Remove all stored credentials
-
-**Features:**
-- 🔒 AES-256 encryption for all sensitive data
-- 🏢 Multi-provider support (Cloudflare, AWS, Google Cloud, Azure, DigitalOcean)
-- 👥 Multiple credential sets per provider (staging, production, etc.)
-- 🔐 Interactive secure input for sensitive fields
-- 💾 Secure storage in `~/.dns-validator/` directory
-- 📤 Safe export/backup functionality
-
-#### `query-analytics <domain>`
-📊 **Advanced DNS query analytics with comprehensive data collection (NEW!)**
-
-**Options:**
-- `--duration, -d`: Collection duration in seconds (default: 300)
-- `--interval, -i`: Query interval in seconds (default: 5)
-- `--query-types, -t`: Comma-separated query types (default: A,AAAA,MX,NS,TXT)
-- `--resolvers, -r`: Comma-separated resolver IPs (uses public DNS by default)
-- `--output, -o`: Output file for analytics data (JSON format)
-- `--geographic`: Enable geographic analysis of query paths
-- `--performance`: Include detailed performance metrics
-- `--concurrent`: Maximum concurrent queries (default: 10)
-
-**Features:**
-- 📈 Real-time query type distribution analysis
-- 🌍 Geographic query path tracking and analysis
-- ⏰ Peak usage time detection and temporal patterns
-- 📊 Response time statistics and performance trends
-- 🔄 Anycast detection and routing analysis
-- 💾 Structured data export for further analysis
-- 📱 Progress tracking with real-time updates
-
-#### `analytics-report <data_file>`
-📋 **Generate comprehensive analytics reports from collected data (NEW!)**
-
-**Options:**
-- `--format, -f`: Report format (executive|technical|geographic|performance) (default: executive)
-- `--output, -o`: Output file path (supports .txt, .md, .html, .json)
-- `--timeframe, -t`: Time period filter (1h|6h|24h|7d|30d|all) (default: all)
-- `--threshold`: Performance threshold for alerts (default: 100ms)
-- `--include-charts`: Include ASCII charts in text reports
-- `--detailed`: Generate detailed technical analysis
-
-**Features:**
-- 📊 Multiple report formats for different audiences
-- 📈 Executive summaries with key performance indicators
-- 🔧 Technical reports with detailed metrics and recommendations
-- 🌍 Geographic analysis with routing optimization suggestions
-- ⚡ Performance reports with SLA compliance tracking
-- 📅 Time-based filtering and trend analysis
-- 🚨 Automated alerting for performance thresholds
-
-#### `dns-insights <domain>`
-🔍 **Advanced DNS insights combining real-time analytics with historical patterns (NEW!)**
-
-**Options:**
-- `--quick, -q`: Quick insight generation (60 seconds)
-- `--comprehensive, -c`: Comprehensive analysis (15 minutes)
-- `--baseline, -b`: Establish performance baseline
-- `--compare <file>`: Compare with previous insights data
-- `--export-insights`: Export insights for trending analysis
-- `--alert-thresholds`: Set custom performance alert levels
-
-**Features:**
-- 🎯 Intelligent query pattern recognition
-- 📊 Automated performance baseline establishment
-- 🔔 Real-time anomaly detection and alerting
-- 📈 Trend analysis with historical comparison
-- 🎨 Interactive insights dashboard (when supported)
-- 💡 Actionable recommendations for DNS optimization
-- 🔄 Continuous monitoring integration capabilities
-
-## DNS Servers Tested
-
-The propagation check queries the following public DNS servers:
-
-| Provider | Primary | Secondary |
-|----------|---------|-----------|
-| Google | 8.8.8.8 | 8.8.4.4 |
-| Cloudflare | 1.1.1.1 | 1.0.0.1 |
-| Quad9 | 9.9.9.9 | - |
-| OpenDNS | 208.67.222.222 | - |
-| Verisign | 64.6.64.6 | - |
-| Level3 | 4.2.2.1 | - |
-
-## Supported DNS Providers
-
-The tool supports detection and analysis of 50+ DNS providers:
-
-### 🌐 Major Cloud Providers
-- **Cloudflare** (✅ Full API Support + 🔐 Credential Management)
-- **AWS Route 53** (✅ Full API Support + 🔐 Credential Management)
-- **Google Cloud DNS** (✅ Full API Support + 🔐 Credential Management)
-- **Azure DNS** (✅ Full API Support + 🔐 Credential Management)
-- **DigitalOcean** (✅ Full API Support + 🔐 Credential Management)
-
-### 🚀 VPS/Cloud Hosting
-- DigitalOcean, Linode, Vultr, OVH, Hetzner, Scaleway
-
-### 🏢 Domain Registrars
-- Namecheap, GoDaddy, Name.com, Domain.com, Gandi, Hover, Dynadot
-
-### 🔒 Security/Privacy DNS
-- Quad9, OpenDNS
-
-### ⚡ Performance DNS
-- DNS Made Easy, NS1, Constellix, UltraDNS
-
-### 🆓 Free DNS Services
-- No-IP, DuckDNS, FreeDNS, Hurricane Electric
-
-And many more! Use `python dns_validator.py list-providers` to see the complete list.
-
-## API Integration
-
-### 🔐 Secure Credential Management (NEW!)
-
-Store your API credentials securely with AES encryption:
+Store and manage API credentials with AES-256 encryption.
 
 ```bash
 # Add credentials interactively (most secure)
 dns-validator creds add Cloudflare production --interactive
 
 # Add credentials via command line
-dns-validator creds add AWS staging --access-key AKIA123... --secret-key abc123...
+dns-validator creds add AWS staging --access-key KEY --secret-key SECRET --region us-east-1
 
-# List stored credentials
+# List stored credentials (secrets masked)
 dns-validator creds list
+
+# Test credentials with a domain
+dns-validator creds test Cloudflare production example.com
+
+# Edit existing credentials
+dns-validator creds edit AWS production
+
+# Export credentials for backup (without secrets)
+dns-validator creds export backup.json
+
+# Delete specific credentials
+dns-validator creds delete Cloudflare staging
+
+# Clear all credentials
+dns-validator creds clear
+```
+
+**Subcommands:**
+- `add <provider> <name>`: Add new credential set
+- `list`: Show all stored credentials (secrets masked)
+- `edit <provider> <name>`: Edit existing credentials
+- `delete <provider> <name>`: Remove credential set
+- `test <provider> <name> <domain>`: Test credentials
+- `export <file>`: Export credential structure
+- `clear`: Remove all stored credentials
+
+**Security Features:**
+- 🔒 AES-256 encryption for all sensitive data
+- 📁 Secure storage in `~/.dns-validator/` directory
+- 👥 Multiple credential sets per provider
+- 🔐 Interactive secure input mode
+- 📤 Safe export/backup functionality
+
+## 🚀 Bulk Processing
+
+Process multiple domains efficiently with parallel processing and comprehensive reporting.
+
+### `bulk <domains_file>`
+Parallel bulk processing of multiple domains.
+
+```bash
+# Basic bulk processing
+dns-validator bulk domains.txt
+
+# Full security analysis with custom workers
+dns-validator bulk domains.txt \
+  --checks delegation \
+  --checks propagation \
+  --checks security \
+  --checks dnssec \
+  --workers 20 \
+  --output security-report.html
+
+# Generate JSON report for automation
+dns-validator bulk domains.txt \
+  --checks delegation \
+  --checks propagation \
+  --output results.json
+
+# CSV export for spreadsheet analysis
+dns-validator bulk domains.txt \
+  --output report.csv \
+  --format csv
+```
+
+**Options:**
+- `--checks, -c`: Choose checks (delegation, propagation, provider, dnssec, security, certificate, ipv6, reverse-dns)
+- `--workers, -w`: Parallel workers (default: 10, max: 50)
+- `--output, -o`: Output file (.json, .html, .csv)
+- `--format, -f`: Force output format
+
+**Performance:**
+- **Small scale** (1-10 domains): ~50 domains/second
+- **Medium scale** (10-100 domains): ~20-30 domains/second
+- **Large scale** (100+ domains): ~10-15 domains/second
+
+### `create-bulk-file <output_file>`
+Create domain files for bulk processing.
+
+```bash
+# Create from command line
+dns-validator create-bulk-file domains.txt example.com google.com github.com
+
+# Create from clipboard
+dns-validator create-bulk-file domains.txt --from-clipboard
+```
+
+**Options:**
+- `--from-clipboard`: Read domains from system clipboard
+
+## 🔐 Security Features
+
+### DNSSEC Validation
+- Complete DNSSEC chain validation
+- DS record verification in parent zones
+- DNSKEY and RRSIG signature analysis
+- Algorithm strength assessment
+- Trust anchor validation
+
+### Security Analysis
+- Open resolver detection and testing
+- DNS amplification vulnerability assessment
+- Subdomain enumeration protection evaluation
+- Security scoring (0-100 points)
+- Vulnerability classification and remediation
+
+### Certificate Integration
+- Certificate Transparency log monitoring
+- CAA record validation and compliance
+- SSL/TLS configuration analysis and grading
+- Certificate chain validation
+- Expiration tracking and alerts
+
+## 🌐 API Integration
+
+### Supported Providers with Full API Integration
+
+#### Cloud Providers
+- **Cloudflare** - Full DNS zone management
+- **AWS Route 53** - Complete DNS record analysis
+- **Google Cloud DNS** - Zone and record management
+- **Azure DNS** - Comprehensive DNS analysis
+- **DigitalOcean** - DNS record and zone management
+
+#### Domain Registrars
+- **Namecheap** - Full DNS management with sandbox support
+- **GoDaddy** - Complete DNS zone management
+- **Name.com** - DNS record and domain management
+- **Gandi** - LiveDNS zone management
+- **OVH** - Multi-region DNS management
+
+### Authentication Methods
+
+#### Secure Credential Storage (Recommended)
+```bash
+# Store credentials with encryption
+dns-validator creds add Cloudflare production --api-token YOUR_TOKEN
 
 # Use stored credentials
 dns-validator provider example.com --provider cloudflare --cred-name production
-
-# Test credentials
-dns-validator creds test Cloudflare production example.com
 ```
 
-### Cloudflare
+#### Direct API Usage
 ```bash
-# Using stored credentials (recommended)
-dns-validator creds add Cloudflare production --api-token YOUR_CF_TOKEN
+# Cloudflare
+dns-validator provider example.com --api-token YOUR_CF_TOKEN
+
+# AWS Route 53
+dns-validator provider example.com --access-key KEY --secret-key SECRET
+
+# Google Cloud DNS
+dns-validator provider example.com --service-account /path/to/service-account.json --project-id PROJECT
+
+# Azure DNS
+dns-validator provider example.com --subscription-id SUB_ID --tenant-id TENANT_ID --client-id CLIENT_ID --client-secret SECRET
+```
+
+#### Environment Variables
+```bash
+# Cloudflare
+export CLOUDFLARE_API_TOKEN=your_token
+
+# AWS
+export AWS_ACCESS_KEY_ID=your_access_key
+export AWS_SECRET_ACCESS_KEY=your_secret_key
+
+# Google Cloud
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+
+# Azure
+export AZURE_CLIENT_ID=your_client_id
+export AZURE_CLIENT_SECRET=your_client_secret
+export AZURE_TENANT_ID=your_tenant_id
+export AZURE_SUBSCRIPTION_ID=your_subscription_id
+```
+
+## 📊 Supported Providers
+
+### DNS Servers Tested
+The propagation check queries these major public DNS servers:
+
+| Provider | Primary | Secondary |
+|----------|---------|-----------|
+| Google | 8.8.8.8 | 8.8.4.4 |
+| Cloudflare | 1.1.1.1 | 1.0.0.1 |
+| Quad9 | 9.9.9.9 | 149.112.112.112 |
+| OpenDNS | 208.67.222.222 | 208.67.220.220 |
+| Verisign | 64.6.64.6 | 64.6.65.6 |
+| Level3 | 4.2.2.1 | 4.2.2.2 |
+
+### 50+ Detected DNS Providers
+
+#### Major Cloud Providers (✅ API Support)
+- **Cloudflare** - Global CDN and DNS
+- **AWS Route 53** - Amazon's DNS service
+- **Google Cloud DNS** - Google's managed DNS
+- **Azure DNS** - Microsoft's DNS service
+- **DigitalOcean** - Developer-focused DNS
+
+#### Domain Registrars (✅ API Support)
+- **Namecheap** - Popular domain registrar
+- **GoDaddy** - Leading domain provider
+- **Name.com** - Domain registration and DNS
+- **Gandi** - European domain registrar
+- **OVH** - European hosting and DNS
+
+#### Enterprise DNS Services
+- **DNS Made Easy** - Enterprise DNS platform
+- **NS1** - Advanced DNS and traffic management
+- **Constellix** - Multi-provider DNS
+- **UltraDNS** - Neustar's enterprise DNS
+- **Dyn** - Oracle's managed DNS
+
+#### Free DNS Services
+- **No-IP** - Dynamic DNS service
+- **DuckDNS** - Free dynamic DNS
+- **FreeDNS** - Afraid.org's free DNS
+- **Hurricane Electric** - Free DNS hosting
+
+*Use `dns-validator list-providers` to see the complete list with API status.*
+
+## 🎯 Advanced Usage
+
+### Enterprise Security Auditing
+```bash
+# Comprehensive security audit
+dns-validator bulk company-domains.txt \
+  --checks delegation \
+  --checks dnssec \
+  --checks security \
+  --checks certificate \
+  --workers 25 \
+  --output security-audit-$(date +%Y%m%d).html
+```
+
+### DNS Migration Validation
+```bash
+# Validate DNS changes after migration
+dns-validator bulk migrated-domains.txt \
+  --checks delegation \
+  --checks propagation \
+  --output migration-validation.json
+
+# Monitor DNS propagation
+dns-validator health-monitor example.com \
+  --duration 120 \
+  --interval 30
+```
+
+### Performance Monitoring
+```bash
+# Geographic performance analysis
+dns-validator geo-dns example.com
+
+# Load balancer health monitoring
+dns-validator load-balancer api.example.com
+
+# IPv6 readiness assessment
+dns-validator ipv6-check example.com
+```
+
+### Automation and CI/CD Integration
+```bash
+# JSON output for automated processing
+dns-validator propagation example.com --type A | jq '.status'
+
+# Bulk processing in CI/CD pipelines
+dns-validator bulk domains.txt --output results.json
+if [ $? -eq 0 ]; then echo "All checks passed"; fi
+```
+
+## 📋 Examples
+
+### Basic Validation Workflow
+```bash
+# 1. Check DNS delegation
+dns-validator delegation example.com
+
+# 2. Verify propagation across DNS servers
+dns-validator propagation example.com --type A
+
+# 3. Detect DNS provider
+dns-validator providers example.com
+
+# 4. Run comprehensive check
+dns-validator full example.com
+```
+
+### Security Assessment Workflow
+```bash
+# 1. DNSSEC validation
+dns-validator dnssec example.com
+
+# 2. Security vulnerability analysis
+dns-validator security-analysis example.com
+
+# 3. Certificate and SSL analysis
+dns-validator certificate-analysis example.com
+
+# 4. Reverse DNS validation
+dns-validator reverse-dns $(dig +short example.com)
+```
+
+### Enterprise Bulk Processing
+```bash
+# 1. Create domain list
+dns-validator create-bulk-file enterprise-domains.txt \
+  app.company.com \
+  api.company.com \
+  www.company.com \
+  mail.company.com
+
+# 2. Comprehensive security analysis
+dns-validator bulk enterprise-domains.txt \
+  --checks delegation \
+  --checks propagation \
+  --checks dnssec \
+  --checks security \
+  --checks certificate \
+  --workers 20 \
+  --output enterprise-security-report.html
+```
+
+### API Integration Setup
+```bash
+# 1. Add Cloudflare credentials securely
+dns-validator creds add Cloudflare production --interactive
+
+# 2. Test credentials
+dns-validator creds test Cloudflare production example.com
+
+# 3. Analyze provider settings
 dns-validator provider example.com --provider cloudflare --cred-name production
 
-# Direct usage (less secure)
-dns-validator provider example.com --api-token YOUR_CF_TOKEN
+# 4. List all stored credentials
+dns-validator creds list
 ```
 
-### AWS Route 53
-```bash
-# Using stored credentials (recommended)
-dns-validator creds add AWS production --access-key YOUR_KEY --secret-key YOUR_SECRET --region us-east-1
-dns-validator provider example.com --provider aws --cred-name production
-
-# Direct usage
-dns-validator provider example.com --access-key YOUR_KEY --secret-key YOUR_SECRET
-
-# Using default AWS credentials
-dns-validator provider example.com --provider "AWS Route 53"
-```
-**Prerequisites:** `pip install boto3`
-
-### Google Cloud DNS
-```bash
-# Using service account file
-dns-validator provider example.com --service-account /path/to/service-account.json --project-id YOUR_PROJECT
-```
-**Prerequisites:** `pip install google-cloud-dns`
-
-### Azure DNS
-```bash
-# Using service principal
-dns-validator provider example.com --subscription-id SUB_ID --tenant-id TENANT_ID --client-id CLIENT_ID --client-secret CLIENT_SECRET
-
-# Using default Azure credentials
-dns-validator provider example.com --subscription-id SUB_ID --resource-group RG_NAME
-```
-**Prerequisites:** `pip install azure-mgmt-dns azure-identity`
-
-### DigitalOcean
-```bash
-dns-validator provider example.com --api-token YOUR_DO_TOKEN
-```
-
-### Namecheap (NEW!)
-```bash
-# Using stored credentials (recommended)
-dns-validator creds add Namecheap production --api-user YOUR_USER --api-secret YOUR_KEY --username YOUR_USERNAME --client-ip YOUR_IP
-dns-validator provider example.com --provider namecheap --cred-name production
-
-# Direct usage
-dns-validator provider example.com --api-user YOUR_API_USER --api-secret YOUR_API_KEY --username YOUR_USERNAME --client-ip YOUR_CLIENT_IP
-
-# Sandbox mode for testing
-dns-validator provider example.com --api-user YOUR_API_USER --api-secret YOUR_API_KEY --sandbox
-```
-
-### GoDaddy (NEW!)
-```bash
-# Using stored credentials (recommended)
-dns-validator creds add GoDaddy production --api-token YOUR_API_KEY --api-secret YOUR_API_SECRET
-dns-validator provider example.com --provider godaddy --cred-name production
-
-# Direct usage
-dns-validator provider example.com --api-token YOUR_API_KEY --api-secret YOUR_API_SECRET
-```
-
-### Name.com (NEW!)
-```bash
-# Using stored credentials (recommended)
-dns-validator creds add "Name.com" production --api-token YOUR_USERNAME --api-secret YOUR_API_TOKEN
-dns-validator provider example.com --provider "Name.com" --cred-name production
-
-# Direct usage
-dns-validator provider example.com --api-token YOUR_USERNAME --api-secret YOUR_API_TOKEN
-```
-
-### Gandi (NEW!)
-```bash
-# Using stored credentials (recommended)
-dns-validator creds add Gandi production --api-token YOUR_API_KEY
-dns-validator provider example.com --provider gandi --cred-name production
-
-# Direct usage
-dns-validator provider example.com --api-token YOUR_API_KEY
-```
-
-### OVH (NEW!)
-```bash
-# Using stored credentials (recommended)
-dns-validator creds add OVH production --application-key YOUR_APP_KEY --application-secret YOUR_APP_SECRET --consumer-key YOUR_CONSUMER_KEY --endpoint ovh-eu
-dns-validator provider example.com --provider ovh --cred-name production
-
-# Direct usage
-dns-validator provider example.com --application-key YOUR_APP_KEY --application-secret YOUR_APP_SECRET --consumer-key YOUR_CONSUMER_KEY --endpoint ovh-eu
-```
-
-For detailed setup instructions, see [CLOUD_PROVIDER_SETUP.md](CLOUD_PROVIDER_SETUP.md).
-
-## Examples
-
-### Check if DNS changes have propagated
-
-```bash
-# After updating A record to point to new server
-python dns_validator.py propagation example.com --expected "192.168.1.100"
-```
-
-### Troubleshoot DNS delegation issues
-
-```bash
-# Check if nameservers are properly configured
-python dns_validator.py delegation example.com --verbose
-```
-
-### Detect and validate DNS provider
-
-```bash
-# Detect DNS provider
-python dns_validator.py providers example.com
-
-# Store credentials securely
-python dns_validator.py creds add Cloudflare production --api-token your_token
-
-# Check provider settings with stored credentials
-python dns_validator.py provider example.com --provider cloudflare --cred-name production
-
-# Direct API usage (less secure)
-python dns_validator.py provider example.com --api-token your_token
-
-# Legacy Cloudflare check
-python dns_validator.py cloudflare example.com --api-token your_token
-```
-
-### Advanced DNS Security and Analysis Examples
-
-```bash
-# DNSSEC validation for security-conscious domains
-python dns_validator_cli.py dnssec cloudflare.com
-python dns_validator_cli.py dnssec --verbose your-secure-domain.com
-
-# Reverse DNS validation for mail servers and security
-python dns_validator_cli.py reverse-dns 8.8.8.8
-python dns_validator_cli.py reverse-dns 2001:4860:4860::8888
-
-# DNS cache analysis for performance optimization
-python dns_validator_cli.py cache-analysis example.com --type A
-python dns_validator_cli.py cache-analysis mail.example.com --type MX
-
-# Real-time DNS health monitoring
-python dns_validator_cli.py health-monitor example.com --duration 60 --interval 300
-python dns_validator_cli.py health-monitor critical-site.com --duration 1440 --interval 60  # 24 hours
-```
-
-### Credential Management Examples
-
-```bash
-# Add multiple environments
-python dns_validator.py creds add Cloudflare staging --interactive
-python dns_validator.py creds add Cloudflare production --interactive
-python dns_validator.py creds add AWS dev --access-key KEY1 --secret-key SECRET1
-python dns_validator.py creds add AWS prod --access-key KEY2 --secret-key SECRET2
-
-# List all stored credentials
-python dns_validator.py creds list
-
-# Test credentials
-python dns_validator.py creds test Cloudflare production example.com
-
-# Export backup (structure only)
-python dns_validator.py creds export backup.json
-
-# Export with secrets (use with caution)
-python dns_validator.py creds export full-backup.json --include-secrets
-
-# Edit existing credentials
-python dns_validator.py creds edit Cloudflare production
-
-# Delete credentials
-python dns_validator.py creds delete AWS dev
-
-# Clear all credentials
-python dns_validator.py creds clear
-```
-
-### Complete domain validation
-
-```bash
-# Run all checks with verbose output
-python dns_validator.py --verbose full example.com --api-token your_token
-```
-
-## Output Colors
-
-The tool uses colored output for better readability:
-
-- 🟢 **Green**: Success, valid configurations
-- 🔴 **Red**: Errors, failed validations
-- 🟡 **Yellow**: Warnings, inconsistencies
-- 🔵 **Blue**: Information, processing status
-- 🟣 **Magenta**: Headers, summaries
-
-## Troubleshooting
+## 🛠 Troubleshooting
 
 ### Common Issues
 
-1. **"No module named 'dns'"**: Install dnspython
-   ```bash
-   pip install dnspython
-   ```
+#### Installation Problems
+```bash
+# Update pip and try again
+pip install --upgrade pip
+pip install dns-validator
 
-2. **Cloudflare API errors**: Check your API token permissions
-
-3. **Timeout errors**: Some DNS servers may be slow; this is normal
-
-4. **Permission denied (Linux/macOS)**: Make the script executable
-   ```bash
-   chmod +x dns_validator.py
-   ```
-
-### Windows PowerShell
-
-If you encounter execution policy issues on Windows:
-
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+# Install from source if PyPI fails
+git clone https://github.com/HereLiesHugo/dns-validator.git
+cd dns-validator
+pip install -e .
 ```
 
-## Requirements
+#### DNS Resolution Issues
+```bash
+# Use verbose mode for debugging
+dns-validator --verbose propagation example.com
 
-- Python 3.7 or higher
-- Internet connection for DNS queries
-- Optional: Cloudflare API token for enhanced features
+# Check specific DNS server
+dig @8.8.8.8 example.com
 
-## Dependencies
+# Verify internet connectivity
+dns-validator propagation google.com
+```
 
-- `click`: Command-line interface framework
-- `dnspython`: DNS toolkit for Python
-- `requests`: HTTP library for API calls
-- `colorama`: Cross-platform colored terminal text
-- `tabulate`: Pretty-print tabular data
-- `cryptography`: Secure credential encryption (AES-256)
-- `concurrent.futures`: Parallel processing
-- **Optional Cloud SDKs:**
-  - `boto3`: AWS Route 53 integration
-  - `google-cloud-dns`: Google Cloud DNS integration
-  - `azure-mgmt-dns` + `azure-identity`: Azure DNS integration
+#### API Authentication Problems
+```bash
+# Test credentials
+dns-validator creds test Cloudflare production example.com
 
-## Contributing
+# Verify API token permissions
+curl -H "Authorization: Bearer YOUR_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify
+```
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+#### Performance Issues
+```bash
+# Reduce concurrent workers
+dns-validator bulk domains.txt --workers 5
 
-## License
+# Use smaller batch sizes
+split -l 100 large-domains.txt batch_
 
-This project is licensed under the GNU Affero General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+# Monitor system resources
+top -p $(pgrep -f dns-validator)
+```
 
-## Support
+### Error Messages
 
+| Error | Solution |
+|-------|----------|
+| `ModuleNotFoundError: No module named 'dns'` | `pip install dnspython` |
+| `Cloudflare API error: Invalid token` | Check token permissions |
+| `Timeout errors` | Normal for slow DNS servers |
+| `Permission denied` | `chmod +x dns-validator` (Linux/macOS) |
+
+### Debug Mode
+```bash
+# Enable maximum verbosity
+dns-validator --verbose [command] [domain]
+
+# Python debugging
+python -v -m dns_validator [command] [domain]
+
+# Network debugging
+dns-validator propagation example.com --verbose 2>&1 | grep -i error
+```
+
+## 📦 Dependencies
+
+### Required Dependencies (Auto-installed)
+- `click>=8.0.0` - Command-line interface framework
+- `dnspython>=2.3.0` - DNS toolkit for Python
+- `requests>=2.28.0` - HTTP library for API calls
+- `colorama>=0.4.6` - Cross-platform colored output
+- `tabulate>=0.9.0` - Pretty-print tabular data
+- `cryptography>=41.0.0` - Credential encryption
+- `pyOpenSSL>=23.0.0` - SSL/TLS certificate handling
+
+### Optional Cloud Provider SDKs
+```bash
+# AWS Route 53
+pip install boto3
+
+# Google Cloud DNS
+pip install google-cloud-dns
+
+# Azure DNS
+pip install azure-mgmt-dns azure-identity
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md).
+
+### Development Setup
+```bash
+# Clone repository
+git clone https://github.com/HereLiesHugo/dns-validator.git
+cd dns-validator
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Linux/macOS
+# venv\Scripts\activate     # Windows
+
+# Install in development mode
+pip install -e .
+
+# Run tests
+python -m pytest tests/
+```
+
+### Reporting Issues
 - 🐛 **Bug Reports**: [GitHub Issues](https://github.com/HereLiesHugo/dns-validator/issues)
 - 💡 **Feature Requests**: [GitHub Issues](https://github.com/HereLiesHugo/dns-validator/issues)
-- 📖 **Documentation**: [README](https://github.com/HereLiesHugo/dns-validator#readme)
+- 📖 **Documentation**: [GitHub Wiki](https://github.com/HereLiesHugo/dns-validator/wiki)
 
-## Changelog
+## 📄 License
 
-### v2.0.0
-- 🔐 **NEW: Secure Credential Management System**
-  - AES-256 encrypted storage of API keys and tokens
-  - Multi-provider credential support (Cloudflare, AWS, Google Cloud, Azure, DigitalOcean)
-  - Multiple credential sets per provider (staging, production, etc.)
-  - Interactive secure input for sensitive data
-  - Credential testing, export, and backup functionality
-- 🌐 **Enhanced API Integration**
-  - Full API support for AWS Route 53, Google Cloud DNS, Azure DNS, DigitalOcean
-  - Improved error handling and debugging
-  - Better provider detection (52+ providers supported)
-- 🛡️ **Security Improvements**
-  - Credentials never stored in plain text
-  - Secure credential directory (~/.dns-validator/)
-  - Safe export options (with/without secrets)
-- 🚀 **Performance & UX**
-  - Faster concurrent DNS queries
-  - Better error messages and help text
-  - Improved cross-platform compatibility
+This project is licensed under the **GNU Affero General Public License v3.0** - see the [LICENSE](LICENSE) file for details.
 
-### v1.0.0
-- Initial release
-- DNS delegation checking
-- DNS propagation testing across 8 public servers
-- Cloudflare integration with API support
-- Cross-platform compatibility
-- Verbose logging and colored output
-- Concurrent DNS queries for performance
+## 🏷️ Version Information
+
+**Current Version**: 2.6.0  
+**Release Date**: October 8, 2025  
+**Python Support**: 3.7+  
+**Platforms**: Windows, Linux, macOS  
+
+### Recent Updates
+- ✅ **v2.5.0**: Bulk domain processing with parallel execution
+- ✅ **v2.4.0**: Extended DNS provider API integrations  
+- ✅ **v2.3.0**: Security analysis and certificate features
+- ✅ **v2.1.0**: DNSSEC validation and health monitoring
+- ✅ **v2.0.0**: Secure credential management system
+
+---
+
+**Made with ❤️ by the DNS Validator team**
+
+For detailed documentation, visit our [GitHub Repository](https://github.com/HereLiesHugo/dns-validator)
