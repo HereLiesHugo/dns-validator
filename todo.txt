@@ -2,29 +2,6 @@
 - Check server Provider, not just DNS
 - Check server location
 
-- Geolocation DNS Testing
-Use DNS servers from different countries
-    GeoDNS routing validation
-    CDN endpoint verification
-- Load Balancer Health Checks
-Multiple A record health
-    Weighted/round-robin validation
-    Failover testing
-- IPv6 Support Enhancement
-AAAA record validation
-    IPv6-only DNS server testing
-    Dual-stack configuration check
-
-- Performance Benchmarking
-Response time statistics
-    Performance comparison across providers
-    Latency heatmaps
-- Historical Data Tracking
-Change detection
-    Historical record keeping
-    Rollback recommendations
-- Export/Import Configurations
-
 - DNS Security Analysis
 Open resolver detection
     DNS amplification vulnerability

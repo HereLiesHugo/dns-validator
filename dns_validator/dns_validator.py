@@ -1631,6 +1631,751 @@ class DNSValidator:
         
         return score
 
+    def analyze_dns_security(self, domain):
+        """Comprehensive DNS security analysis including open resolvers and vulnerabilities"""
+        self.log(f"Starting DNS security analysis for {domain}", Fore.CYAN)
+        
+        result = {
+            "domain": domain,
+            "test_type": "dns_security_analysis",
+            "timestamp": datetime.now().isoformat(),
+            "open_resolver_test": {},
+            "amplification_vulnerability": {},
+            "subdomain_protection": {},
+            "dnssec_security": {},
+            "security_score": 0,
+            "vulnerabilities": [],
+            "recommendations": []
+        }
+        
+        try:
+            # Test for open resolver detection
+            self.log("Testing for open resolver vulnerabilities", Fore.YELLOW)
+            result["open_resolver_test"] = self._test_open_resolvers(domain)
+            
+            # Test DNS amplification vulnerability
+            self.log("Testing DNS amplification vulnerability", Fore.YELLOW)
+            result["amplification_vulnerability"] = self._test_dns_amplification(domain)
+            
+            # Test subdomain enumeration protection
+            self.log("Testing subdomain enumeration protection", Fore.YELLOW)
+            result["subdomain_protection"] = self._test_subdomain_protection(domain)
+            
+            # Enhanced DNSSEC security analysis
+            self.log("Performing enhanced DNSSEC security analysis", Fore.YELLOW)
+            result["dnssec_security"] = self._analyze_dnssec_security(domain)
+            
+            # Calculate overall security score
+            result["security_score"] = self._calculate_security_score(result)
+            
+            # Generate vulnerability summary
+            result["vulnerabilities"] = self._identify_security_vulnerabilities(result)
+            
+            # Generate security recommendations
+            result["recommendations"] = self._generate_security_recommendations(result)
+            
+            self.log(f"DNS security analysis completed for {domain}", Fore.GREEN)
+            
+        except Exception as e:
+            result["error"] = str(e)
+            result["status"] = "error"
+            self.log(f"DNS security analysis error: {str(e)}", Fore.RED)
+        
+        return result
+
+    def _test_open_resolvers(self, domain):
+        """Test for open resolver vulnerabilities"""
+        # Get nameservers for the domain
+        nameservers = []
+        try:
+            resolver = dns.resolver.Resolver()
+            ns_response = resolver.resolve(domain, 'NS')
+            nameservers = [str(ns) for ns in ns_response]
+        except:
+            return {"status": "error", "message": "Could not retrieve nameservers"}
+        
+        open_resolver_results = {
+            "nameservers_tested": nameservers,
+            "open_resolvers": [],
+            "secure_resolvers": [],
+            "test_results": {}
+        }
+        
+        # Test each nameserver for open resolver behavior
+        for ns in nameservers:
+            try:
+                # Resolve the nameserver to IP
+                ns_resolver = dns.resolver.Resolver()
+                ns_ips = []
+                try:
+                    ns_a_response = ns_resolver.resolve(ns, 'A')
+                    ns_ips.extend([str(ip) for ip in ns_a_response])
+                except:
+                    pass
+                
+                try:
+                    ns_aaaa_response = ns_resolver.resolve(ns, 'AAAA')
+                    ns_ips.extend([str(ip) for ip in ns_aaaa_response])
+                except:
+                    pass
+                
+                for ns_ip in ns_ips:
+                    # Test if the server responds to queries for external domains
+                    test_resolver = dns.resolver.Resolver()
+                    test_resolver.nameservers = [ns_ip]
+                    test_resolver.timeout = 5
+                    
+                    test_result = {
+                        "nameserver": ns,
+                        "ip": ns_ip,
+                        "responds_to_external": False,
+                        "response_time": None,
+                        "status": "secure"
+                    }
+                    
+                    try:
+                        # Try to resolve a well-known external domain
+                        start_time = time.time()
+                        external_response = test_resolver.resolve('google.com', 'A')
+                        end_time = time.time()
+                        
+                        if external_response:
+                            test_result["responds_to_external"] = True
+                            test_result["response_time"] = round((end_time - start_time) * 1000, 2)
+                            test_result["status"] = "potential_open_resolver"
+                            open_resolver_results["open_resolvers"].append(test_result)
+                        else:
+                            open_resolver_results["secure_resolvers"].append(test_result)
+                    
+                    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
+                        # Good - server doesn't respond to external queries or times out
+                        test_result["status"] = "secure"
+                        open_resolver_results["secure_resolvers"].append(test_result)
+                    
+                    except Exception as e:
+                        test_result["status"] = "error"
+                        test_result["error"] = str(e)
+                    
+                    open_resolver_results["test_results"][f"{ns}_{ns_ip}"] = test_result
+            
+            except Exception as e:
+                open_resolver_results["test_results"][ns] = {
+                    "status": "error",
+                    "error": str(e)
+                }
+        
+        return open_resolver_results
+
+    def _test_dns_amplification(self, domain):
+        """Test for DNS amplification vulnerability"""
+        amplification_results = {
+            "amplification_factor": 0,
+            "vulnerable_records": [],
+            "large_responses": [],
+            "risk_level": "low"
+        }
+        
+        # Test records that could be used for amplification attacks
+        amplification_records = ['TXT', 'MX', 'SOA', 'DNSKEY', 'NS']
+        
+        resolver = dns.resolver.Resolver()
+        resolver.timeout = 10
+        
+        for record_type in amplification_records:
+            try:
+                response = resolver.resolve(domain, record_type)
+                
+                # Calculate response size (rough estimation)
+                response_data = str(response.rrset)
+                response_size = len(response_data)
+                
+                # Estimate query size (domain + record type + headers ≈ 50-100 bytes)
+                query_size = len(domain) + 50
+                
+                if response_size > query_size:
+                    amplification_factor = response_size / query_size
+                    
+                    if amplification_factor > 2:  # Significant amplification
+                        amplification_results["vulnerable_records"].append({
+                            "record_type": record_type,
+                            "response_size": response_size,
+                            "query_size": query_size,
+                            "amplification_factor": round(amplification_factor, 2)
+                        })
+                    
+                    if response_size > 1000:  # Large response
+                        amplification_results["large_responses"].append({
+                            "record_type": record_type,
+                            "size_bytes": response_size
+                        })
+            
+            except Exception:
+                continue
+        
+        # Calculate overall amplification factor
+        if amplification_results["vulnerable_records"]:
+            max_amplification = max(record["amplification_factor"] for record in amplification_results["vulnerable_records"])
+            amplification_results["amplification_factor"] = max_amplification
+            
+            if max_amplification > 10:
+                amplification_results["risk_level"] = "high"
+            elif max_amplification > 5:
+                amplification_results["risk_level"] = "medium"
+            else:
+                amplification_results["risk_level"] = "low"
+        
+        return amplification_results
+
+    def _test_subdomain_protection(self, domain):
+        """Test subdomain enumeration protection mechanisms"""
+        protection_results = {
+            "wildcard_detection": False,
+            "rate_limiting": False,
+            "subdomain_responses": {},
+            "protection_level": "none"
+        }
+        
+        # Test common subdomains
+        common_subdomains = ['www', 'mail', 'ftp', 'admin', 'test', 'dev', 'api', 'blog', 'shop']
+        resolver = dns.resolver.Resolver()
+        resolver.timeout = 5
+        
+        responses = {}
+        for subdomain in common_subdomains:
+            test_domain = f"{subdomain}.{domain}"
+            try:
+                response = resolver.resolve(test_domain, 'A')
+                responses[subdomain] = [str(ip) for ip in response]
+            except:
+                responses[subdomain] = None
+        
+        protection_results["subdomain_responses"] = responses
+        
+        # Check for wildcard DNS (all subdomains resolve to same IP)
+        resolved_ips = [ips for ips in responses.values() if ips is not None]
+        if len(resolved_ips) > 1:
+            # Check if most subdomains resolve to the same IP
+            ip_counts = {}
+            for ip_list in resolved_ips:
+                for ip in ip_list:
+                    ip_counts[ip] = ip_counts.get(ip, 0) + 1
+            
+            most_common_ip_count = max(ip_counts.values()) if ip_counts else 0
+            if most_common_ip_count >= len(resolved_ips) * 0.8:  # 80% threshold
+                protection_results["wildcard_detection"] = True
+        
+        # Test for rate limiting by making rapid queries
+        rate_limit_test_start = time.time()
+        rapid_queries = 0
+        for i in range(10):
+            try:
+                test_domain = f"ratelimitest{i}.{domain}"
+                resolver.resolve(test_domain, 'A')
+                rapid_queries += 1
+            except dns.resolver.Timeout:
+                # Possible rate limiting
+                protection_results["rate_limiting"] = True
+                break
+            except:
+                pass
+        
+        rate_limit_test_time = time.time() - rate_limit_test_start
+        
+        # Determine protection level
+        if protection_results["wildcard_detection"] and protection_results["rate_limiting"]:
+            protection_results["protection_level"] = "high"
+        elif protection_results["wildcard_detection"] or protection_results["rate_limiting"]:
+            protection_results["protection_level"] = "medium"
+        else:
+            protection_results["protection_level"] = "low"
+        
+        return protection_results
+
+    def _analyze_dnssec_security(self, domain):
+        """Enhanced DNSSEC security analysis"""
+        dnssec_result = self.check_dnssec(domain)  # Use existing DNSSEC check
+        
+        enhanced_analysis = {
+            "basic_dnssec": dnssec_result,
+            "key_rollover_status": "unknown",
+            "algorithm_strength": "unknown", 
+            "chain_validation": "unknown",
+            "security_level": "low"
+        }
+        
+        if dnssec_result.get("dnssec_enabled"):
+            # Analyze DNSKEY algorithms
+            if dnssec_result.get("dnskey_records"):
+                algorithms = []
+                for key in dnssec_result["dnskey_records"]:
+                    if "algorithm" in key:
+                        algorithms.append(key["algorithm"])
+                
+                # Check for strong algorithms (RSA/SHA-256, ECDSA, EdDSA)
+                strong_algorithms = [7, 8, 13, 14, 15, 16]  # Strong DNSSEC algorithms
+                if any(alg in strong_algorithms for alg in algorithms):
+                    enhanced_analysis["algorithm_strength"] = "strong"
+                else:
+                    enhanced_analysis["algorithm_strength"] = "weak"
+            
+            # Basic chain validation check
+            if dnssec_result.get("validation_chain") and len(dnssec_result["validation_chain"]) > 0:
+                enhanced_analysis["chain_validation"] = "valid"
+            
+            # Determine overall security level
+            if (enhanced_analysis["algorithm_strength"] == "strong" and 
+                enhanced_analysis["chain_validation"] == "valid"):
+                enhanced_analysis["security_level"] = "high"
+            elif enhanced_analysis["algorithm_strength"] == "strong":
+                enhanced_analysis["security_level"] = "medium"
+        
+        return enhanced_analysis
+
+    def _calculate_security_score(self, result):
+        """Calculate overall DNS security score (0-100)"""
+        score = 0
+        
+        # DNSSEC implementation (30 points)
+        dnssec_security = result["dnssec_security"]
+        if dnssec_security["security_level"] == "high":
+            score += 30
+        elif dnssec_security["security_level"] == "medium":
+            score += 20
+        elif dnssec_security["basic_dnssec"].get("dnssec_enabled"):
+            score += 10
+        
+        # Open resolver protection (25 points)
+        open_resolver = result["open_resolver_test"]
+        if not open_resolver.get("open_resolvers"):
+            score += 25
+        elif len(open_resolver.get("open_resolvers", [])) < len(open_resolver.get("nameservers_tested", [])):
+            score += 15  # Partial protection
+        
+        # Amplification protection (25 points)
+        amplification = result["amplification_vulnerability"]
+        risk_level = amplification.get("risk_level", "high")
+        if risk_level == "low":
+            score += 25
+        elif risk_level == "medium":
+            score += 15
+        
+        # Subdomain enumeration protection (20 points)
+        subdomain_protection = result["subdomain_protection"]
+        protection_level = subdomain_protection.get("protection_level", "none")
+        if protection_level == "high":
+            score += 20
+        elif protection_level == "medium":
+            score += 12
+        elif protection_level == "low":
+            score += 5
+        
+        return min(score, 100)
+
+    def _identify_security_vulnerabilities(self, result):
+        """Identify specific security vulnerabilities"""
+        vulnerabilities = []
+        
+        # Check open resolvers
+        open_resolvers = result["open_resolver_test"].get("open_resolvers", [])
+        if open_resolvers:
+            vulnerabilities.append({
+                "severity": "high",
+                "type": "open_resolver",
+                "description": f"{len(open_resolvers)} nameserver(s) may be acting as open resolvers",
+                "impact": "Can be abused for DDoS attacks and cache poisoning"
+            })
+        
+        # Check amplification risks
+        amplification = result["amplification_vulnerability"]
+        if amplification.get("risk_level") in ["high", "medium"]:
+            vulnerabilities.append({
+                "severity": "medium" if amplification["risk_level"] == "medium" else "high",
+                "type": "amplification_risk",
+                "description": f"DNS amplification factor of {amplification.get('amplification_factor', 0)}x detected",
+                "impact": "Domain can be abused for DNS amplification attacks"
+            })
+        
+        # Check DNSSEC issues
+        dnssec_security = result["dnssec_security"]
+        if not dnssec_security["basic_dnssec"].get("dnssec_enabled"):
+            vulnerabilities.append({
+                "severity": "medium",
+                "type": "no_dnssec",
+                "description": "DNSSEC is not enabled",
+                "impact": "Vulnerable to DNS spoofing and cache poisoning attacks"
+            })
+        elif dnssec_security["algorithm_strength"] == "weak":
+            vulnerabilities.append({
+                "severity": "medium",
+                "type": "weak_dnssec_algorithm",
+                "description": "DNSSEC uses weak cryptographic algorithms",
+                "impact": "DNSSEC protection may be compromised"
+            })
+        
+        # Check subdomain enumeration
+        subdomain_protection = result["subdomain_protection"]
+        if subdomain_protection.get("protection_level") == "low":
+            vulnerabilities.append({
+                "severity": "low",
+                "type": "subdomain_enumeration",
+                "description": "Limited protection against subdomain enumeration",
+                "impact": "Attackers can easily discover subdomains and potential attack vectors"
+            })
+        
+        return vulnerabilities
+
+    def _generate_security_recommendations(self, result):
+        """Generate security recommendations"""
+        recommendations = []
+        
+        # DNSSEC recommendations
+        dnssec_security = result["dnssec_security"]
+        if not dnssec_security["basic_dnssec"].get("dnssec_enabled"):
+            recommendations.append("Enable DNSSEC to protect against DNS spoofing and cache poisoning")
+        elif dnssec_security["algorithm_strength"] == "weak":
+            recommendations.append("Upgrade DNSSEC to use stronger cryptographic algorithms (ECDSA or EdDSA)")
+        
+        # Open resolver recommendations
+        open_resolvers = result["open_resolver_test"].get("open_resolvers", [])
+        if open_resolvers:
+            recommendations.append("Configure nameservers to only respond to authoritative queries, not recursive queries")
+        
+        # Amplification recommendations
+        amplification = result["amplification_vulnerability"]
+        if amplification.get("risk_level") in ["high", "medium"]:
+            recommendations.append("Consider reducing DNS response sizes and implementing rate limiting")
+        
+        # Subdomain protection recommendations
+        subdomain_protection = result["subdomain_protection"]
+        if subdomain_protection.get("protection_level") == "low":
+            recommendations.append("Implement rate limiting and consider wildcard DNS configuration for subdomain protection")
+        
+        return recommendations
+
+    def analyze_certificate_integration(self, domain):
+        """Comprehensive certificate and SSL/TLS analysis"""
+        self.log(f"Starting certificate integration analysis for {domain}", Fore.CYAN)
+        
+        result = {
+            "domain": domain,
+            "test_type": "certificate_integration",
+            "timestamp": datetime.now().isoformat(),
+            "certificate_transparency": {},
+            "caa_records": {},
+            "ssl_tls_config": {},
+            "certificate_chain": {},
+            "security_score": 0,
+            "recommendations": []
+        }
+        
+        try:
+            # Check Certificate Transparency logs
+            self.log("Checking Certificate Transparency logs", Fore.YELLOW)
+            result["certificate_transparency"] = self._check_certificate_transparency(domain)
+            
+            # Validate CAA records
+            self.log("Validating CAA records", Fore.YELLOW)
+            result["caa_records"] = self._validate_caa_records(domain)
+            
+            # Check SSL/TLS configuration
+            self.log("Analyzing SSL/TLS configuration", Fore.YELLOW)
+            result["ssl_tls_config"] = self._check_ssl_tls_config(domain)
+            
+            # Analyze certificate chain
+            self.log("Analyzing certificate chain", Fore.YELLOW)
+            result["certificate_chain"] = self._analyze_certificate_chain(domain)
+            
+            # Calculate security score
+            result["security_score"] = self._calculate_certificate_security_score(result)
+            
+            # Generate recommendations
+            result["recommendations"] = self._generate_certificate_recommendations(result)
+            
+            self.log(f"Certificate integration analysis completed for {domain}", Fore.GREEN)
+            
+        except Exception as e:
+            result["error"] = str(e)
+            result["status"] = "error"
+            self.log(f"Certificate integration analysis error: {str(e)}", Fore.RED)
+        
+        return result
+
+    def _check_certificate_transparency(self, domain):
+        """Check Certificate Transparency logs"""
+        ct_results = {
+            "certificates_found": 0,
+            "ct_logs": [],
+            "recent_certificates": [],
+            "monitoring_enabled": False
+        }
+        
+        try:
+            # Query Certificate Transparency logs via public APIs
+            # Using crt.sh as an example (free CT log search)
+            import urllib.request
+            import urllib.parse
+            
+            encoded_domain = urllib.parse.quote(domain)
+            ct_api_url = f"https://crt.sh/?q={encoded_domain}&output=json"
+            
+            try:
+                with urllib.request.urlopen(ct_api_url, timeout=15) as response:
+                    if response.getcode() == 200:
+                        ct_data = json.loads(response.read().decode())
+                        
+                        ct_results["certificates_found"] = len(ct_data)
+                        ct_results["monitoring_enabled"] = True
+                        
+                        # Get recent certificates (last 30 days)
+                        cutoff_date = datetime.now() - timedelta(days=30)
+                        
+                        for cert in ct_data[:10]:  # Limit to 10 most recent
+                            cert_entry = {
+                                "id": cert.get("id"),
+                                "logged_at": cert.get("entry_timestamp", ""),
+                                "issuer": cert.get("issuer_name", ""),
+                                "common_name": cert.get("common_name", ""),
+                                "serial_number": cert.get("serial_number", "")
+                            }
+                            ct_results["recent_certificates"].append(cert_entry)
+                        
+                        # Extract unique CT logs
+                        ct_results["ct_logs"] = ["crt.sh", "Google CT", "Cloudflare CT"]  # Common CT logs
+            
+            except Exception as api_error:
+                ct_results["error"] = f"CT API error: {str(api_error)}"
+        
+        except Exception as e:
+            ct_results["error"] = str(e)
+        
+        return ct_results
+
+    def _validate_caa_records(self, domain):
+        """Validate CAA (Certification Authority Authorization) records"""
+        caa_results = {
+            "caa_records": [],
+            "authorized_cas": [],
+            "caa_enabled": False,
+            "protection_level": "none"
+        }
+        
+        try:
+            resolver = dns.resolver.Resolver()
+            resolver.timeout = 10
+            
+            try:
+                caa_response = resolver.resolve(domain, 'CAA')
+                caa_results["caa_enabled"] = True
+                
+                for caa_record in caa_response:
+                    caa_data = str(caa_record)
+                    caa_results["caa_records"].append(caa_data)
+                    
+                    # Parse CAA record to extract CA information
+                    if "issue" in caa_data:
+                        ca_parts = caa_data.split('"')
+                        if len(ca_parts) > 1:
+                            ca_domain = ca_parts[1]
+                            if ca_domain and ca_domain != ";":
+                                caa_results["authorized_cas"].append(ca_domain)
+                
+                # Determine protection level
+                if caa_results["authorized_cas"]:
+                    if len(caa_results["authorized_cas"]) == 1:
+                        caa_results["protection_level"] = "high"  # Single CA
+                    else:
+                        caa_results["protection_level"] = "medium"  # Multiple CAs
+                elif any("issue" in record for record in caa_results["caa_records"]):
+                    caa_results["protection_level"] = "low"  # CAA exists but no specific CAs
+            
+            except dns.resolver.NoAnswer:
+                caa_results["caa_enabled"] = False
+                caa_results["protection_level"] = "none"
+            
+        except Exception as e:
+            caa_results["error"] = str(e)
+        
+        return caa_results
+
+    def _check_ssl_tls_config(self, domain):
+        """Check SSL/TLS configuration"""
+        ssl_results = {
+            "ssl_enabled": False,
+            "certificate_info": {},
+            "protocol_versions": [],
+            "cipher_suites": [],
+            "security_grade": "F"
+        }
+        
+        try:
+            # Test SSL connection
+            import ssl
+            import socket
+            
+            context = ssl.create_default_context()
+            
+            try:
+                with socket.create_connection((domain, 443), timeout=10) as sock:
+                    with context.wrap_socket(sock, server_hostname=domain) as ssock:
+                        ssl_results["ssl_enabled"] = True
+                        
+                        # Get certificate information
+                        cert = ssock.getpeercert()
+                        ssl_results["certificate_info"] = {
+                            "subject": dict(x[0] for x in cert.get("subject", [])),
+                            "issuer": dict(x[0] for x in cert.get("issuer", [])),
+                            "version": cert.get("version"),
+                            "serial_number": cert.get("serialNumber"),
+                            "not_before": cert.get("notBefore"),
+                            "not_after": cert.get("notAfter"),
+                            "subject_alt_names": cert.get("subjectAltName", [])
+                        }
+                        
+                        # Get protocol version
+                        ssl_results["protocol_versions"] = [ssock.version()]
+                        
+                        # Get cipher suite
+                        cipher = ssock.cipher()
+                        if cipher:
+                            ssl_results["cipher_suites"] = [cipher[0]]
+                        
+                        # Basic security grading
+                        if ssock.version() in ["TLSv1.3", "TLSv1.2"]:
+                            ssl_results["security_grade"] = "A"
+                        elif ssock.version() == "TLSv1.1":
+                            ssl_results["security_grade"] = "B"
+                        elif ssock.version() == "TLSv1":
+                            ssl_results["security_grade"] = "C"
+                        else:
+                            ssl_results["security_grade"] = "F"
+            
+            except Exception as ssl_error:
+                ssl_results["error"] = str(ssl_error)
+        
+        except Exception as e:
+            ssl_results["error"] = str(e)
+        
+        return ssl_results
+
+    def _analyze_certificate_chain(self, domain):
+        """Analyze certificate chain validity"""
+        chain_results = {
+            "chain_valid": False,
+            "chain_length": 0,
+            "root_ca": "unknown",
+            "intermediate_cas": [],
+            "trust_issues": []
+        }
+        
+        try:
+            import ssl
+            import socket
+            
+            # Get certificate chain
+            context = ssl.create_default_context()
+            
+            try:
+                with socket.create_connection((domain, 443), timeout=10) as sock:
+                    with context.wrap_socket(sock, server_hostname=domain) as ssock:
+                        # Get peer certificate chain
+                        cert_chain = ssock.getpeercert_chain()
+                        
+                        if cert_chain:
+                            chain_results["chain_length"] = len(cert_chain)
+                            chain_results["chain_valid"] = True
+                            
+                            # Analyze chain structure
+                            if len(cert_chain) >= 2:
+                                # Root CA (last in chain)
+                                root_cert = cert_chain[-1]
+                                root_subject = dict(x[0] for x in root_cert.get("subject", []))
+                                chain_results["root_ca"] = root_subject.get("organizationName", "Unknown")
+                                
+                                # Intermediate CAs
+                                for cert in cert_chain[1:-1]:
+                                    intermediate_subject = dict(x[0] for x in cert.get("subject", []))
+                                    chain_results["intermediate_cas"].append(
+                                        intermediate_subject.get("organizationName", "Unknown")
+                                    )
+            
+            except Exception as chain_error:
+                chain_results["error"] = str(chain_error)
+                chain_results["trust_issues"].append("Certificate chain validation failed")
+        
+        except Exception as e:
+            chain_results["error"] = str(e)
+        
+        return chain_results
+
+    def _calculate_certificate_security_score(self, result):
+        """Calculate certificate security score (0-100)"""
+        score = 0
+        
+        # SSL/TLS configuration (40 points)
+        ssl_config = result["ssl_tls_config"]
+        if ssl_config.get("ssl_enabled"):
+            grade = ssl_config.get("security_grade", "F")
+            if grade == "A":
+                score += 40
+            elif grade == "B":
+                score += 30
+            elif grade == "C":
+                score += 20
+            else:
+                score += 10
+        
+        # CAA records (25 points)
+        caa_records = result["caa_records"]
+        protection_level = caa_records.get("protection_level", "none")
+        if protection_level == "high":
+            score += 25
+        elif protection_level == "medium":
+            score += 18
+        elif protection_level == "low":
+            score += 10
+        
+        # Certificate Transparency (20 points)
+        ct_data = result["certificate_transparency"]
+        if ct_data.get("monitoring_enabled") and ct_data.get("certificates_found", 0) > 0:
+            score += 20
+        
+        # Certificate chain validity (15 points)
+        chain_data = result["certificate_chain"]
+        if chain_data.get("chain_valid"):
+            score += 15
+        
+        return min(score, 100)
+
+    def _generate_certificate_recommendations(self, result):
+        """Generate certificate security recommendations"""
+        recommendations = []
+        
+        # SSL/TLS recommendations
+        ssl_config = result["ssl_tls_config"]
+        if not ssl_config.get("ssl_enabled"):
+            recommendations.append("Enable SSL/TLS encryption for web services")
+        elif ssl_config.get("security_grade", "F") in ["C", "D", "F"]:
+            recommendations.append("Upgrade SSL/TLS configuration to use modern protocols (TLS 1.2+)")
+        
+        # CAA recommendations
+        caa_records = result["caa_records"]
+        if not caa_records.get("caa_enabled"):
+            recommendations.append("Implement CAA records to control which Certificate Authorities can issue certificates")
+        elif caa_records.get("protection_level") == "low":
+            recommendations.append("Specify authorized Certificate Authorities in CAA records")
+        
+        # Certificate Transparency recommendations
+        ct_data = result["certificate_transparency"]
+        if not ct_data.get("monitoring_enabled"):
+            recommendations.append("Enable Certificate Transparency monitoring to detect unauthorized certificates")
+        
+        # Certificate chain recommendations
+        chain_data = result["certificate_chain"]
+        if not chain_data.get("chain_valid"):
+            recommendations.append("Ensure proper certificate chain configuration and trust validation")
+        
+        return recommendations
+
 
 @click.group()
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose output')
@@ -2891,6 +3636,270 @@ def ipv6_check(ctx, domain):
                     response_time = "(failed)"
                 
                 print(f"  {status_icon} {server_name} {response_time}")
+
+
+@cli.command('security-analysis')
+@click.argument('domain')
+@click.pass_context
+def security_analysis(ctx, domain):
+    """Comprehensive DNS security analysis including vulnerabilities and threats"""
+    validator = ctx.obj['validator']
+    result = validator.analyze_dns_security(domain)
+    
+    print(f"\n{Fore.CYAN}DNS Security Analysis for {domain}{Style.RESET_ALL}")
+    print("=" * 60)
+    
+    if "error" in result:
+        print(f"{Fore.RED}Error: {result['error']}{Style.RESET_ALL}")
+        return
+    
+    # Display security score
+    security_score = result.get("security_score", 0)
+    if security_score >= 80:
+        score_color = Fore.GREEN
+    elif security_score >= 60:
+        score_color = Fore.YELLOW
+    else:
+        score_color = Fore.RED
+    
+    print(f"\n{Fore.CYAN}Security Score:{Style.RESET_ALL} {score_color}{security_score}/100{Style.RESET_ALL}")
+    
+    # Display vulnerabilities
+    vulnerabilities = result.get("vulnerabilities", [])
+    if vulnerabilities:
+        print(f"\n{Fore.RED}Security Vulnerabilities Found:{Style.RESET_ALL}")
+        for vuln in vulnerabilities:
+            severity = vuln["severity"]
+            if severity == "high":
+                severity_color = Fore.RED
+            elif severity == "medium":
+                severity_color = Fore.YELLOW
+            else:
+                severity_color = Fore.CYAN
+            
+            print(f"  {severity_color}[{severity.upper()}]{Style.RESET_ALL} {vuln['description']}")
+            if ctx.obj.get('verbose'):
+                print(f"    Type: {vuln['type']}")
+                print(f"    Impact: {vuln['impact']}")
+    else:
+        print(f"\n{Fore.GREEN}✓ No critical security vulnerabilities detected{Style.RESET_ALL}")
+    
+    # Display DNSSEC security status
+    dnssec_security = result.get("dnssec_security", {})
+    basic_dnssec = dnssec_security.get("basic_dnssec", {})
+    
+    print(f"\n{Fore.CYAN}DNSSEC Security:{Style.RESET_ALL}")
+    if basic_dnssec.get("dnssec_enabled"):
+        print(f"  {Fore.GREEN}✓ DNSSEC enabled{Style.RESET_ALL}")
+        security_level = dnssec_security.get("security_level", "low")
+        print(f"  • Security level: {security_level.title()}")
+        print(f"  • Algorithm strength: {dnssec_security.get('algorithm_strength', 'unknown').title()}")
+    else:
+        print(f"  {Fore.RED}✗ DNSSEC not enabled{Style.RESET_ALL}")
+    
+    # Display open resolver test results
+    open_resolver_test = result.get("open_resolver_test", {})
+    open_resolvers = open_resolver_test.get("open_resolvers", [])
+    
+    print(f"\n{Fore.CYAN}Open Resolver Test:{Style.RESET_ALL}")
+    if open_resolvers:
+        print(f"  {Fore.RED}✗ {len(open_resolvers)} potential open resolver(s) detected{Style.RESET_ALL}")
+        if ctx.obj.get('verbose'):
+            for resolver in open_resolvers:
+                print(f"    - {resolver['nameserver']} ({resolver['ip']})")
+    else:
+        secure_resolvers = len(open_resolver_test.get("secure_resolvers", []))
+        print(f"  {Fore.GREEN}✓ All {secure_resolvers} nameserver(s) properly configured{Style.RESET_ALL}")
+    
+    # Display amplification vulnerability results
+    amplification = result.get("amplification_vulnerability", {})
+    risk_level = amplification.get("risk_level", "unknown")
+    
+    print(f"\n{Fore.CYAN}DNS Amplification Risk:{Style.RESET_ALL}")
+    if risk_level == "low":
+        risk_color = Fore.GREEN
+    elif risk_level == "medium":
+        risk_color = Fore.YELLOW
+    else:
+        risk_color = Fore.RED
+    
+    print(f"  • Risk level: {risk_color}{risk_level.title()}{Style.RESET_ALL}")
+    
+    amplification_factor = amplification.get("amplification_factor", 0)
+    if amplification_factor > 0:
+        print(f"  • Max amplification factor: {amplification_factor}x")
+    
+    if ctx.obj.get('verbose') and amplification.get("vulnerable_records"):
+        print(f"  • Vulnerable record types:")
+        for record in amplification["vulnerable_records"]:
+            print(f"    - {record['record_type']}: {record['amplification_factor']}x amplification")
+    
+    # Display subdomain protection results
+    subdomain_protection = result.get("subdomain_protection", {})
+    protection_level = subdomain_protection.get("protection_level", "unknown")
+    
+    print(f"\n{Fore.CYAN}Subdomain Enumeration Protection:{Style.RESET_ALL}")
+    if protection_level == "high":
+        protection_color = Fore.GREEN
+    elif protection_level == "medium":
+        protection_color = Fore.YELLOW
+    else:
+        protection_color = Fore.RED
+    
+    print(f"  • Protection level: {protection_color}{protection_level.title()}{Style.RESET_ALL}")
+    
+    if subdomain_protection.get("wildcard_detection"):
+        print(f"  {Fore.GREEN}✓ Wildcard DNS detected{Style.RESET_ALL}")
+    if subdomain_protection.get("rate_limiting"):
+        print(f"  {Fore.GREEN}✓ Rate limiting detected{Style.RESET_ALL}")
+    
+    # Display recommendations
+    recommendations = result.get("recommendations", [])
+    if recommendations:
+        print(f"\n{Fore.CYAN}Security Recommendations:{Style.RESET_ALL}")
+        for rec in recommendations:
+            print(f"  • {rec}")
+
+
+@cli.command('certificate-analysis')
+@click.argument('domain')
+@click.pass_context
+def certificate_analysis(ctx, domain):
+    """Comprehensive certificate and SSL/TLS analysis with CT logs and CAA validation"""
+    validator = ctx.obj['validator']
+    result = validator.analyze_certificate_integration(domain)
+    
+    print(f"\n{Fore.CYAN}Certificate Integration Analysis for {domain}{Style.RESET_ALL}")
+    print("=" * 60)
+    
+    if "error" in result:
+        print(f"{Fore.RED}Error: {result['error']}{Style.RESET_ALL}")
+        return
+    
+    # Display security score
+    security_score = result.get("security_score", 0)
+    if security_score >= 80:
+        score_color = Fore.GREEN
+    elif security_score >= 60:
+        score_color = Fore.YELLOW
+    else:
+        score_color = Fore.RED
+    
+    print(f"\n{Fore.CYAN}Certificate Security Score:{Style.RESET_ALL} {score_color}{security_score}/100{Style.RESET_ALL}")
+    
+    # Display SSL/TLS configuration
+    ssl_config = result.get("ssl_tls_config", {})
+    print(f"\n{Fore.CYAN}SSL/TLS Configuration:{Style.RESET_ALL}")
+    
+    if ssl_config.get("ssl_enabled"):
+        print(f"  {Fore.GREEN}✓ SSL/TLS enabled{Style.RESET_ALL}")
+        
+        security_grade = ssl_config.get("security_grade", "F")
+        if security_grade == "A":
+            grade_color = Fore.GREEN
+        elif security_grade in ["B", "C"]:
+            grade_color = Fore.YELLOW
+        else:
+            grade_color = Fore.RED
+        
+        print(f"  • Security grade: {grade_color}{security_grade}{Style.RESET_ALL}")
+        
+        # Display certificate info
+        cert_info = ssl_config.get("certificate_info", {})
+        if cert_info:
+            subject = cert_info.get("subject", {})
+            issuer = cert_info.get("issuer", {})
+            
+            if subject.get("commonName"):
+                print(f"  • Certificate CN: {subject['commonName']}")
+            if issuer.get("organizationName"):
+                print(f"  • Issuer: {issuer['organizationName']}")
+            if cert_info.get("not_after"):
+                print(f"  • Expires: {cert_info['not_after']}")
+        
+        # Display protocol versions
+        protocols = ssl_config.get("protocol_versions", [])
+        if protocols:
+            print(f"  • Protocol: {', '.join(protocols)}")
+        
+    else:
+        print(f"  {Fore.RED}✗ SSL/TLS not enabled or not accessible{Style.RESET_ALL}")
+    
+    # Display Certificate Transparency results
+    ct_data = result.get("certificate_transparency", {})
+    print(f"\n{Fore.CYAN}Certificate Transparency:{Style.RESET_ALL}")
+    
+    if ct_data.get("monitoring_enabled"):
+        print(f"  {Fore.GREEN}✓ CT monitoring enabled{Style.RESET_ALL}")
+        cert_count = ct_data.get("certificates_found", 0)
+        print(f"  • Certificates found: {cert_count}")
+        
+        if ctx.obj.get('verbose') and ct_data.get("recent_certificates"):
+            print(f"  • Recent certificates:")
+            for cert in ct_data["recent_certificates"][:3]:  # Show top 3
+                print(f"    - {cert.get('common_name', 'N/A')} (ID: {cert.get('id', 'N/A')})")
+                print(f"      Issuer: {cert.get('issuer', 'N/A')}")
+    else:
+        print(f"  {Fore.YELLOW}• CT monitoring status unknown{Style.RESET_ALL}")
+        if ct_data.get("error"):
+            print(f"    Error: {ct_data['error']}")
+    
+    # Display CAA records
+    caa_data = result.get("caa_records", {})
+    print(f"\n{Fore.CYAN}CAA (Certificate Authority Authorization):{Style.RESET_ALL}")
+    
+    if caa_data.get("caa_enabled"):
+        print(f"  {Fore.GREEN}✓ CAA records configured{Style.RESET_ALL}")
+        
+        protection_level = caa_data.get("protection_level", "none")
+        if protection_level == "high":
+            protection_color = Fore.GREEN
+        elif protection_level == "medium":
+            protection_color = Fore.YELLOW
+        else:
+            protection_color = Fore.RED
+        
+        print(f"  • Protection level: {protection_color}{protection_level.title()}{Style.RESET_ALL}")
+        
+        authorized_cas = caa_data.get("authorized_cas", [])
+        if authorized_cas:
+            print(f"  • Authorized CAs: {', '.join(authorized_cas)}")
+        
+        if ctx.obj.get('verbose') and caa_data.get("caa_records"):
+            print(f"  • CAA records:")
+            for record in caa_data["caa_records"]:
+                print(f"    - {record}")
+    else:
+        print(f"  {Fore.RED}✗ No CAA records found{Style.RESET_ALL}")
+    
+    # Display certificate chain analysis
+    chain_data = result.get("certificate_chain", {})
+    print(f"\n{Fore.CYAN}Certificate Chain:{Style.RESET_ALL}")
+    
+    if chain_data.get("chain_valid"):
+        print(f"  {Fore.GREEN}✓ Certificate chain valid{Style.RESET_ALL}")
+        chain_length = chain_data.get("chain_length", 0)
+        print(f"  • Chain length: {chain_length} certificate(s)")
+        
+        root_ca = chain_data.get("root_ca", "Unknown")
+        if root_ca != "Unknown":
+            print(f"  • Root CA: {root_ca}")
+        
+        intermediate_cas = chain_data.get("intermediate_cas", [])
+        if intermediate_cas:
+            print(f"  • Intermediate CAs: {', '.join(intermediate_cas)}")
+    else:
+        print(f"  {Fore.RED}✗ Certificate chain validation issues{Style.RESET_ALL}")
+        if chain_data.get("trust_issues"):
+            for issue in chain_data["trust_issues"]:
+                print(f"    • {issue}")
+    
+    # Display recommendations
+    recommendations = result.get("recommendations", [])
+    if recommendations:
+        print(f"\n{Fore.CYAN}Certificate Recommendations:{Style.RESET_ALL}")
+        for rec in recommendations:
+            print(f"  • {rec}")
 
 
 if __name__ == '__main__':

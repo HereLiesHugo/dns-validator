@@ -106,6 +106,32 @@ python#### `dnssec <domain>`
 - Configuration recommendations
 - Forward/reverse IPv6 consistency
 
+#### `security-analysis <domain>`
+🔒 **Comprehensive DNS security analysis including vulnerabilities and threats (NEW!)**
+
+**Features:**
+- Open resolver detection and testing
+- DNS amplification vulnerability assessment
+- Subdomain enumeration protection analysis
+- Enhanced DNSSEC security evaluation
+- Security scoring system (0-100)
+- Vulnerability identification and classification
+- Comprehensive security recommendations
+- Risk level assessment and mitigation guidance
+
+#### `certificate-analysis <domain>`
+🏆 **Certificate and SSL/TLS analysis with CT logs and CAA validation (NEW!)**
+
+**Features:**
+- Certificate Transparency log monitoring
+- CAA (Certificate Authority Authorization) record validation
+- SSL/TLS configuration analysis and grading
+- Certificate chain validation and trust verification
+- SSL/TLS protocol and cipher suite evaluation
+- Certificate expiration and validity checking
+- Security score calculation and recommendations
+- Certificate authority compliance verification
+
 ## Usage Examples
 
 ```bash
@@ -122,6 +148,10 @@ python dns_validator_cli.py health-monitor example.com --duration 30 --interval 
 python dns_validator_cli.py geo-dns example.com
 python dns_validator_cli.py load-balancer cloudflare.com
 python dns_validator_cli.py ipv6-check google.com
+
+# Security and certificate analysis (NEW!)
+python dns_validator_cli.py security-analysis example.com
+python dns_validator_cli.py certificate-analysis example.com
 
 # Manage API credentials (NEW!)
 python dns_validator_cli.py creds add Cloudflare production --api-token YOUR_TOKEN
@@ -144,6 +174,9 @@ python dns_validator_cli.py --verbose delegation example.comting, and DNS provid
 
 ### 🔐 **Security & DNSSEC**
 - **DNSSEC Validation**: Complete DNSSEC chain validation including DS, DNSKEY, and RRSIG records
+- **DNS Security Analysis**: Open resolver detection, amplification vulnerability assessment, subdomain protection
+- **Certificate Integration**: Certificate Transparency logs, CAA record validation, SSL/TLS configuration analysis
+- **Security Scoring**: Comprehensive 0-100 security scoring with vulnerability classification
 - **Secure Credential Management**: Encrypted storage and management of API keys for multiple providers
 - **Reverse DNS Validation**: PTR record validation with forward/reverse consistency checking
 

@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="dns-validator",
-    version="2.2.0",
+    version="2.3.0",
     author="Matisse Urquhart",
     author_email="me@maturqu.com",
     description="A comprehensive DNS validation tool with delegation, propagation, and provider settings checks",
@@ -46,6 +46,9 @@ setup(
         "concurrent.futures>=3.1.1;python_version<'3.2'",
         "pathlib>=1.0.1;python_version<'3.4'",
         "ipaddress>=1.0.23;python_version<'3.3'",
+        "pyOpenSSL>=23.0.0",
+        "certifi>=2022.12.7",
+        "urllib3>=1.26.0",
     ],
     entry_points={
         "console_scripts": [
