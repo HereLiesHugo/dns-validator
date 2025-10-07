@@ -15,7 +15,7 @@ help:
 # Install dependencies
 install:
 	pip install -r requirements.txt
-	chmod +x dns_validator.py
+	chmod +x dns_validator_cli.py
 	chmod +x dns-validator.sh
 
 # Run tests
@@ -30,11 +30,11 @@ test-coverage:
 
 # Lint code (if pylint is installed)
 lint:
-	pylint dns_validator.py || true
+	pylint dns_validator/ || true
 
 # Format code (if black is installed)
 format:
-	black dns_validator.py tests/ || true
+	black dns_validator/ tests/ || true
 
 # Clean temporary files
 clean:
@@ -49,5 +49,5 @@ dev-install: install
 
 # Quick validation test
 quick-test:
-	python3 dns_validator.py delegation google.com
-	python3 dns_validator.py propagation google.com
+	python3 dns_validator_cli.py delegation google.com
+	python3 dns_validator_cli.py propagation google.com

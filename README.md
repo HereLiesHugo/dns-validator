@@ -32,19 +32,51 @@ pip install -r requirements.txt
 chmod +x dns_validator.py
 ```
 
-### Method 2: Python Package Installation (pip)
+### Method 2: Package Installation (pip)
 
 ```bash
+# Install from PyPI (when available)
 pip install dns-validator
+
+# Install from GitHub
+pip install git+https://github.com/HereLiesHugo/dns-validator.git
+
+# Install in development mode
+git clone https://github.com/HereLiesHugo/dns-validator.git
+cd dns-validator
+pip install -e .
 ```
 
 ## Usage
 
+### Execution Methods
+
+The DNS Validator can be executed in multiple ways:
+
+1. **Via pip installation (recommended):**
+   ```bash
+   dns-validator [command] [options]
+   dnsval [command] [options]  # Short alias
+   ```
+
+2. **Direct script execution:**
+   ```bash
+   python dns_validator_cli.py [command] [options]
+   ```
+
+3. **As Python module:**
+   ```bash
+   python -m dns_validator [command] [options]
+   ```
+
 ### Basic Commands
 
 ```bash
-# Check DNS delegation
-python dns_validator.py delegation example.com
+# Check DNS delegation (direct script execution)
+python dns_validator_cli.py delegation example.com
+
+# Or if installed via pip
+dns-validator delegation example.com
 
 # Check DNS propagation (A record)
 python dns_validator.py propagation example.com

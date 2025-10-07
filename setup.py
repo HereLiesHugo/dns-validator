@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="dns-validator",
-    version="1.0.0",
+    version="2.0.1",
     author="DNS Validator Team",
     author_email="contact@dnsvalidator.com",
     description="A comprehensive DNS validation tool with delegation, propagation, and provider settings checks",
@@ -46,8 +46,8 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "dns-validator=dns_validator:cli",
-            "dnsval=dns_validator:cli",
+            "dns-validator=dns_validator.dns_validator:cli",
+            "dnsval=dns_validator.dns_validator:cli",
         ],
     },
     keywords="dns validation delegation propagation cloudflare nameservers cli",

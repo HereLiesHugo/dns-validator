@@ -7,11 +7,11 @@ param(
 )
 
 $ScriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
-$PythonScript = Join-Path $ScriptPath "dns_validator.py"
+$PythonScript = Join-Path $ScriptPath "dns_validator_cli.py"
 
 if (Test-Path $PythonScript) {
     python $PythonScript @Arguments
 } else {
-    Write-Error "dns_validator.py not found in $ScriptPath"
+    Write-Error "dns_validator_cli.py not found in $ScriptPath"
     exit 1
 }

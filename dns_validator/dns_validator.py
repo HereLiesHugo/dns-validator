@@ -19,7 +19,7 @@ from tabulate import tabulate
 import concurrent.futures
 import threading
 from datetime import datetime
-from api_key_manager import APIKeyManager
+from .api_key_manager import APIKeyManager
 
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)

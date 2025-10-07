@@ -70,8 +70,14 @@ python dns_validator.py full example.com --type A --expected "1.2.3.4" --api-tok
 - 1: Error or validation failure
 
 ## Files
-- `dns_validator.py`: Main CLI script
+- `dns_validator/`: Main package directory
+  - `dns_validator.py`: Core DNS validation functionality
+  - `api_key_manager.py`: Secure credential management
+  - `__init__.py`: Package initialization
+  - `__main__.py`: Module entry point
+- `dns_validator_cli.py`: Backward compatibility wrapper
 - `requirements.txt`: Python dependencies
+- `setup.py`: Package installation configuration
 - `dns-validator.bat`: Windows batch launcher
 - `dns-validator.ps1`: PowerShell launcher
 - `dns-validator.sh`: Unix shell launcher
