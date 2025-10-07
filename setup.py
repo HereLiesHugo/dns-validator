@@ -43,12 +43,14 @@ setup(
         "google-cloud-dns>=0.34.0",
         "azure-mgmt-dns>=8.0.0",
         "azure-identity>=1.12.0",
+        "azure-core>=1.24.0",
         "concurrent.futures>=3.1.1;python_version<'3.2'",
         "pathlib>=1.0.1;python_version<'3.4'",
         "ipaddress>=1.0.23;python_version<'3.3'",
         "pyOpenSSL>=23.0.0",
         "certifi>=2022.12.7",
         "urllib3>=1.26.0",
+        "pyperclip>=1.8.0",
     ],
     entry_points={
         "console_scripts": [

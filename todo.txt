@@ -6,13 +6,3 @@
 Flask/FastAPI web interface
     Real-time monitoring dashboard
     Historical charts and graphs
-
-
-- DNS Query Analytics
-Query type distribution
-    Geographic query analysis
-    Peak usage times
-- Comparison Tools
-Side-by-side comparison
-    Best practice recommendations
-    Configuration drift detection
