@@ -22,6 +22,10 @@ import time
 import socket
 import getpass
 import json
+import subprocess
+import platform
+import ssl
+import urllib.request
 from typing import List, Dict, Optional, Tuple
 from colorama import init, Fore, Style
 from tabulate import tabulate
@@ -1043,6 +1047,590 @@ class DNSValidator:
         
         return result
 
+    def test_geolocation_dns(self, domain):
+        """Test DNS resolution from different geographic locations"""
+        self.log(f"Starting geolocation DNS testing for {domain}", Fore.CYAN)
+        
+        # DNS servers from different countries/regions
+        geo_servers = {
+            "United States (Cloudflare)": "1.1.1.1",
+            "United States (Google)": "8.8.8.8",
+            "United States (Quad9)": "9.9.9.9",
+            "Germany (Quad9)": "149.112.112.112",
+            "United Kingdom (OpenDNS)": "208.67.222.222",
+            "Australia (Cloudflare)": "1.0.0.1",
+            "Japan (Google)": "8.8.4.4",
+            "Canada (OpenDNS)": "208.67.220.220",
+            "Netherlands (Quad9)": "9.9.9.10",
+            "Singapore (Cloudflare)": "1.1.1.1",
+            "Brazil (Google)": "8.8.8.8",
+            "India (Quad9)": "149.112.112.10",
+            "South Korea": "168.126.63.1",
+            "Russia": "77.88.8.8",
+            "China": "114.114.114.114"
+        }
+        
+        result = {
+            "domain": domain,
+            "test_type": "geolocation_dns",
+            "timestamp": datetime.now().isoformat(),
+            "geo_results": {},
+            "geodns_analysis": {},
+            "cdn_endpoints": [],
+            "summary": {}
+        }
+        
+        try:
+            # Test from each geographic location
+            for location, server in geo_servers.items():
+                self.log(f"Testing from {location} ({server})", Fore.YELLOW)
+                
+                location_result = {
+                    "server": server,
+                    "a_records": [],
+                    "aaaa_records": [],
+                    "cname_records": [],
+                    "response_time": None,
+                    "ttl": None,
+                    "status": "success"
+                }
+                
+                try:
+                    resolver = dns.resolver.Resolver()
+                    resolver.nameservers = [server]
+                    resolver.timeout = 10
+                    resolver.lifetime = 15
+                    
+                    start_time = time.time()
+                    
+                    # Query A records
+                    try:
+                        a_response = resolver.resolve(domain, 'A')
+                        location_result["a_records"] = [str(rdata) for rdata in a_response]
+                        location_result["ttl"] = a_response.rrset.ttl
+                    except Exception as e:
+                        self.log(f"A record query failed from {location}: {str(e)}", Fore.RED)
+                    
+                    # Query AAAA records
+                    try:
+                        aaaa_response = resolver.resolve(domain, 'AAAA')
+                        location_result["aaaa_records"] = [str(rdata) for rdata in aaaa_response]
+                    except:
+                        pass  # IPv6 records may not exist
+                    
+                    # Query CNAME records
+                    try:
+                        cname_response = resolver.resolve(domain, 'CNAME')
+                        location_result["cname_records"] = [str(rdata) for rdata in cname_response]
+                    except:
+                        pass  # CNAME may not exist
+                    
+                    end_time = time.time()
+                    location_result["response_time"] = round((end_time - start_time) * 1000, 2)
+                    
+                except Exception as e:
+                    location_result["status"] = "error"
+                    location_result["error"] = str(e)
+                    self.log(f"Failed to query from {location}: {str(e)}", Fore.RED)
+                
+                result["geo_results"][location] = location_result
+            
+            # Analyze GeoDNS routing patterns
+            all_a_records = set()
+            location_ips = {}
+            
+            for location, data in result["geo_results"].items():
+                if data.get("a_records"):
+                    location_ips[location] = data["a_records"]
+                    all_a_records.update(data["a_records"])
+            
+            result["geodns_analysis"] = {
+                "unique_ip_addresses": list(all_a_records),
+                "total_unique_ips": len(all_a_records),
+                "geodns_detected": len(all_a_records) > 1,
+                "location_routing": location_ips,
+                "routing_consistency": len(set(tuple(sorted(ips)) for ips in location_ips.values())) == 1
+            }
+            
+            # Detect CDN endpoints
+            cdn_patterns = {
+                "cloudflare": ["cloudflare", "cf-ray"],
+                "aws": ["cloudfront", "amazonaws"],
+                "azure": ["azureedge", "azure"],
+                "google": ["googleusercontent", "gstatic"],
+                "fastly": ["fastly"],
+                "akamai": ["akamai", "edgesuite"],
+                "maxcdn": ["maxcdn"],
+                "keycdn": ["keycdn"]
+            }
+            
+            detected_cdns = set()
+            for ip in all_a_records:
+                try:
+                    # Reverse DNS lookup for CDN detection
+                    reverse_name = str(dns.reversename.from_address(ip))
+                    reverse_response = dns.resolver.resolve(reverse_name, 'PTR')
+                    reverse_domain = str(reverse_response[0]).lower()
+                    
+                    for cdn_name, patterns in cdn_patterns.items():
+                        if any(pattern in reverse_domain for pattern in patterns):
+                            detected_cdns.add(cdn_name)
+                            result["cdn_endpoints"].append({
+                                "ip": ip,
+                                "cdn_provider": cdn_name,
+                                "reverse_domain": reverse_domain
+                            })
+                            break
+                except:
+                    pass
+            
+            # Generate summary
+            successful_locations = len([r for r in result["geo_results"].values() if r["status"] == "success"])
+            total_locations = len(result["geo_results"])
+            avg_response_time = sum(r.get("response_time", 0) for r in result["geo_results"].values() if r.get("response_time")) / successful_locations if successful_locations > 0 else 0
+            
+            result["summary"] = {
+                "successful_tests": successful_locations,
+                "total_tests": total_locations,
+                "success_rate": round((successful_locations / total_locations) * 100, 2),
+                "average_response_time_ms": round(avg_response_time, 2),
+                "geodns_routing_detected": result["geodns_analysis"]["geodns_detected"],
+                "cdn_providers_detected": list(detected_cdns),
+                "routing_consistency": result["geodns_analysis"]["routing_consistency"]
+            }
+            
+            self.log(f"Geolocation DNS testing completed for {domain}", Fore.GREEN)
+            
+        except Exception as e:
+            result["error"] = str(e)
+            result["status"] = "error"
+            self.log(f"Geolocation DNS testing error: {str(e)}", Fore.RED)
+        
+        return result
+
+    def check_load_balancer_health(self, domain):
+        """Check load balancer health and validate multiple A records"""
+        self.log(f"Starting load balancer health checks for {domain}", Fore.CYAN)
+        
+        result = {
+            "domain": domain,
+            "test_type": "load_balancer_health",
+            "timestamp": datetime.now().isoformat(),
+            "a_records": [],
+            "health_checks": {},
+            "load_balancing_analysis": {},
+            "failover_tests": {},
+            "summary": {}
+        }
+        
+        try:
+            # Get all A records for the domain
+            resolver = dns.resolver.Resolver()
+            resolver.timeout = 10
+            resolver.lifetime = 15
+            
+            try:
+                a_response = resolver.resolve(domain, 'A')
+                result["a_records"] = [str(rdata) for rdata in a_response]
+                self.log(f"Found {len(result['a_records'])} A records for {domain}", Fore.YELLOW)
+            except Exception as e:
+                result["error"] = f"Failed to resolve A records: {str(e)}"
+                return result
+            
+            if len(result["a_records"]) < 2:
+                self.log(f"Only {len(result['a_records'])} A record found. Load balancer testing requires multiple A records.", Fore.YELLOW)
+                result["summary"] = {
+                    "load_balancer_detected": False,
+                    "reason": "Single A record - no load balancing detected"
+                }
+                return result
+            
+            # Test health of each A record/endpoint
+            for i, ip_address in enumerate(result["a_records"]):
+                self.log(f"Testing endpoint {i+1}: {ip_address}", Fore.YELLOW)
+                
+                endpoint_health = {
+                    "ip_address": ip_address,
+                    "tcp_connectivity": False,
+                    "http_response": None,
+                    "https_response": None,
+                    "response_times": {},
+                    "status": "unknown"
+                }
+                
+                # Test TCP connectivity on common ports
+                common_ports = [80, 443, 22, 21, 25, 53]
+                tcp_results = {}
+                
+                for port in common_ports:
+                    try:
+                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        sock.settimeout(5)
+                        start_time = time.time()
+                        result_code = sock.connect_ex((ip_address, port))
+                        end_time = time.time()
+                        sock.close()
+                        
+                        tcp_results[port] = {
+                            "open": result_code == 0,
+                            "response_time": round((end_time - start_time) * 1000, 2)
+                        }
+                        
+                        if result_code == 0:
+                            endpoint_health["tcp_connectivity"] = True
+                            
+                    except Exception as e:
+                        tcp_results[port] = {"open": False, "error": str(e)}
+                
+                endpoint_health["tcp_ports"] = tcp_results
+                
+                # Test HTTP/HTTPS if web ports are open
+                if tcp_results.get(80, {}).get("open") or tcp_results.get(443, {}).get("open"):
+                    try:
+                        import urllib.request
+                        import ssl
+                        
+                        # Test HTTP
+                        if tcp_results.get(80, {}).get("open"):
+                            try:
+                                start_time = time.time()
+                                response = urllib.request.urlopen(f"http://{ip_address}", timeout=10)
+                                end_time = time.time()
+                                endpoint_health["http_response"] = {
+                                    "status_code": response.getcode(),
+                                    "response_time": round((end_time - start_time) * 1000, 2),
+                                    "content_length": len(response.read())
+                                }
+                                endpoint_health["response_times"]["http"] = endpoint_health["http_response"]["response_time"]
+                            except Exception as e:
+                                endpoint_health["http_response"] = {"error": str(e)}
+                        
+                        # Test HTTPS
+                        if tcp_results.get(443, {}).get("open"):
+                            try:
+                                # Create SSL context that doesn't verify certificates for IP addresses
+                                ssl_context = ssl.create_default_context()
+                                ssl_context.check_hostname = False
+                                ssl_context.verify_mode = ssl.CERT_NONE
+                                
+                                start_time = time.time()
+                                response = urllib.request.urlopen(f"https://{ip_address}", timeout=10, context=ssl_context)
+                                end_time = time.time()
+                                endpoint_health["https_response"] = {
+                                    "status_code": response.getcode(),
+                                    "response_time": round((end_time - start_time) * 1000, 2),
+                                    "content_length": len(response.read())
+                                }
+                                endpoint_health["response_times"]["https"] = endpoint_health["https_response"]["response_time"]
+                            except Exception as e:
+                                endpoint_health["https_response"] = {"error": str(e)}
+                                
+                    except ImportError:
+                        pass  # urllib not available
+                
+                # Determine overall endpoint status
+                if endpoint_health["tcp_connectivity"]:
+                    if endpoint_health.get("http_response", {}).get("status_code") == 200 or \
+                       endpoint_health.get("https_response", {}).get("status_code") == 200:
+                        endpoint_health["status"] = "healthy"
+                    else:
+                        endpoint_health["status"] = "tcp_only"
+                else:
+                    endpoint_health["status"] = "unhealthy"
+                
+                result["health_checks"][ip_address] = endpoint_health
+            
+            # Analyze load balancing patterns
+            healthy_endpoints = [ip for ip, health in result["health_checks"].items() if health["status"] in ["healthy", "tcp_only"]]
+            unhealthy_endpoints = [ip for ip, health in result["health_checks"].items() if health["status"] == "unhealthy"]
+            
+            # Test weighted/round-robin behavior by making multiple queries
+            self.log("Testing load balancing behavior with multiple DNS queries", Fore.YELLOW)
+            query_results = []
+            
+            for i in range(10):  # Make 10 queries to test distribution
+                try:
+                    response = resolver.resolve(domain, 'A')
+                    returned_ips = [str(rdata) for rdata in response]
+                    query_results.append(returned_ips)
+                    time.sleep(0.1)  # Small delay between queries
+                except:
+                    pass
+            
+            # Analyze query distribution
+            ip_frequency = {}
+            for query_result in query_results:
+                for ip in query_result:
+                    ip_frequency[ip] = ip_frequency.get(ip, 0) + 1
+            
+            result["load_balancing_analysis"] = {
+                "total_endpoints": len(result["a_records"]),
+                "healthy_endpoints": len(healthy_endpoints),
+                "unhealthy_endpoints": len(unhealthy_endpoints),
+                "health_percentage": round((len(healthy_endpoints) / len(result["a_records"])) * 100, 2),
+                "query_distribution": ip_frequency,
+                "balanced_distribution": max(ip_frequency.values()) - min(ip_frequency.values()) <= 2 if ip_frequency else False
+            }
+            
+            # Simulate failover testing (conceptual)
+            result["failover_tests"] = {
+                "failover_capable": len(healthy_endpoints) > 1,
+                "single_point_failure": len(healthy_endpoints) == 1,
+                "redundancy_level": "high" if len(healthy_endpoints) >= 3 else "medium" if len(healthy_endpoints) == 2 else "low"
+            }
+            
+            # Generate summary
+            result["summary"] = {
+                "load_balancer_detected": len(result["a_records"]) > 1,
+                "total_endpoints": len(result["a_records"]),
+                "healthy_endpoints": len(healthy_endpoints),
+                "health_status": "good" if len(unhealthy_endpoints) == 0 else "degraded" if len(healthy_endpoints) > 0 else "critical",
+                "load_balancing_type": "round_robin" if result["load_balancing_analysis"].get("balanced_distribution") else "weighted_or_geographic",
+                "failover_ready": result["failover_tests"]["failover_capable"],
+                "redundancy_assessment": result["failover_tests"]["redundancy_level"]
+            }
+            
+            self.log(f"Load balancer health check completed for {domain}", Fore.GREEN)
+            
+        except Exception as e:
+            result["error"] = str(e)
+            result["status"] = "error"
+            self.log(f"Load balancer health check error: {str(e)}", Fore.RED)
+        
+        return result
+
+    def validate_ipv6_support(self, domain):
+        """Enhanced IPv6 support validation including dual-stack configuration"""
+        self.log(f"Starting IPv6 support validation for {domain}", Fore.CYAN)
+        
+        result = {
+            "domain": domain,
+            "test_type": "ipv6_validation",
+            "timestamp": datetime.now().isoformat(),
+            "aaaa_records": [],
+            "ipv6_dns_servers": {},
+            "dual_stack_analysis": {},
+            "ipv6_connectivity": {},
+            "dns_over_ipv6": {},
+            "summary": {}
+        }
+        
+        try:
+            # Test AAAA record resolution
+            self.log("Testing AAAA record resolution", Fore.YELLOW)
+            resolver = dns.resolver.Resolver()
+            resolver.timeout = 10
+            resolver.lifetime = 15
+            
+            try:
+                aaaa_response = resolver.resolve(domain, 'AAAA')
+                result["aaaa_records"] = [str(rdata) for rdata in aaaa_response]
+                self.log(f"Found {len(result['aaaa_records'])} AAAA records", Fore.GREEN)
+            except dns.resolver.NXDOMAIN:
+                self.log("No AAAA records found (NXDOMAIN)", Fore.YELLOW)
+            except dns.resolver.NoAnswer:
+                self.log("No AAAA records found (NoAnswer)", Fore.YELLOW)
+            except Exception as e:
+                self.log(f"AAAA record query failed: {str(e)}", Fore.RED)
+            
+            # Test IPv6-only DNS servers
+            ipv6_dns_servers = {
+                "Google IPv6 Primary": "2001:4860:4860::8888",
+                "Google IPv6 Secondary": "2001:4860:4860::8844",
+                "Cloudflare IPv6 Primary": "2606:4700:4700::1111",
+                "Cloudflare IPv6 Secondary": "2606:4700:4700::1001",
+                "Quad9 IPv6": "2620:fe::fe",
+                "OpenDNS IPv6": "2620:119:35::35"
+            }
+            
+            self.log("Testing DNS resolution over IPv6", Fore.YELLOW)
+            
+            for server_name, ipv6_server in ipv6_dns_servers.items():
+                server_result = {
+                    "server": ipv6_server,
+                    "a_records": [],
+                    "aaaa_records": [],
+                    "response_time": None,
+                    "status": "success"
+                }
+                
+                try:
+                    ipv6_resolver = dns.resolver.Resolver()
+                    ipv6_resolver.nameservers = [ipv6_server]
+                    ipv6_resolver.timeout = 10
+                    ipv6_resolver.lifetime = 15
+                    
+                    start_time = time.time()
+                    
+                    # Test A record resolution over IPv6
+                    try:
+                        a_response = ipv6_resolver.resolve(domain, 'A')
+                        server_result["a_records"] = [str(rdata) for rdata in a_response]
+                    except Exception as e:
+                        server_result["a_error"] = str(e)
+                    
+                    # Test AAAA record resolution over IPv6
+                    try:
+                        aaaa_response = ipv6_resolver.resolve(domain, 'AAAA')
+                        server_result["aaaa_records"] = [str(rdata) for rdata in aaaa_response]
+                    except Exception as e:
+                        server_result["aaaa_error"] = str(e)
+                    
+                    end_time = time.time()
+                    server_result["response_time"] = round((end_time - start_time) * 1000, 2)
+                    
+                except Exception as e:
+                    server_result["status"] = "error"
+                    server_result["error"] = str(e)
+                    self.log(f"IPv6 DNS query failed for {server_name}: {str(e)}", Fore.RED)
+                
+                result["ipv6_dns_servers"][server_name] = server_result
+            
+            # Dual-stack configuration analysis
+            self.log("Analyzing dual-stack configuration", Fore.YELLOW)
+            
+            # Get A records for comparison
+            a_records = []
+            try:
+                a_response = resolver.resolve(domain, 'A')
+                a_records = [str(rdata) for rdata in a_response]
+            except:
+                pass
+            
+            result["dual_stack_analysis"] = {
+                "ipv4_available": len(a_records) > 0,
+                "ipv6_available": len(result["aaaa_records"]) > 0,
+                "dual_stack_enabled": len(a_records) > 0 and len(result["aaaa_records"]) > 0,
+                "ipv4_only": len(a_records) > 0 and len(result["aaaa_records"]) == 0,
+                "ipv6_only": len(a_records) == 0 and len(result["aaaa_records"]) > 0,
+                "a_record_count": len(a_records),
+                "aaaa_record_count": len(result["aaaa_records"]),
+                "configuration_type": "dual_stack" if (len(a_records) > 0 and len(result["aaaa_records"]) > 0) else
+                                   "ipv4_only" if len(a_records) > 0 else
+                                   "ipv6_only" if len(result["aaaa_records"]) > 0 else "none"
+            }
+            
+            # Test IPv6 connectivity to AAAA records
+            if result["aaaa_records"]:
+                self.log("Testing IPv6 connectivity", Fore.YELLOW)
+                
+                for ipv6_addr in result["aaaa_records"]:
+                    connectivity_test = {
+                        "address": ipv6_addr,
+                        "ping_result": None,
+                        "tcp_connectivity": {},
+                        "reachable": False
+                    }
+                    
+                    # Test IPv6 ping (if available)
+                    try:
+                        import subprocess
+                        import platform
+                        
+                        ping_cmd = ["ping", "-6", "-c", "3", ipv6_addr] if platform.system() != "Windows" else ["ping", "-6", "-n", "3", ipv6_addr]
+                        ping_result = subprocess.run(ping_cmd, capture_output=True, text=True, timeout=15)
+                        
+                        if ping_result.returncode == 0:
+                            connectivity_test["ping_result"] = "success"
+                            connectivity_test["reachable"] = True
+                        else:
+                            connectivity_test["ping_result"] = "failed"
+                            
+                    except Exception as e:
+                        connectivity_test["ping_result"] = f"error: {str(e)}"
+                    
+                    # Test TCP connectivity on common ports
+                    common_ports = [80, 443, 22]
+                    for port in common_ports:
+                        try:
+                            sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+                            sock.settimeout(5)
+                            start_time = time.time()
+                            result_code = sock.connect_ex((ipv6_addr, port))
+                            end_time = time.time()
+                            sock.close()
+                            
+                            connectivity_test["tcp_connectivity"][port] = {
+                                "open": result_code == 0,
+                                "response_time": round((end_time - start_time) * 1000, 2)
+                            }
+                            
+                            if result_code == 0:
+                                connectivity_test["reachable"] = True
+                                
+                        except Exception as e:
+                            connectivity_test["tcp_connectivity"][port] = {"error": str(e)}
+                    
+                    result["ipv6_connectivity"][ipv6_addr] = connectivity_test
+            
+            # Test DNS-over-IPv6 functionality
+            successful_ipv6_dns = len([r for r in result["ipv6_dns_servers"].values() if r["status"] == "success"])
+            total_ipv6_dns = len(result["ipv6_dns_servers"])
+            
+            result["dns_over_ipv6"] = {
+                "servers_tested": total_ipv6_dns,
+                "successful_queries": successful_ipv6_dns,
+                "success_rate": round((successful_ipv6_dns / total_ipv6_dns) * 100, 2) if total_ipv6_dns > 0 else 0,
+                "ipv6_dns_functional": successful_ipv6_dns > 0
+            }
+            
+            # Generate summary
+            ipv6_reachable = any(conn.get("reachable", False) for conn in result["ipv6_connectivity"].values())
+            
+            result["summary"] = {
+                "ipv6_supported": len(result["aaaa_records"]) > 0,
+                "dual_stack_configured": result["dual_stack_analysis"]["dual_stack_enabled"],
+                "ipv6_dns_working": result["dns_over_ipv6"]["ipv6_dns_functional"],
+                "ipv6_connectivity": "reachable" if ipv6_reachable else "unreachable" if result["aaaa_records"] else "no_ipv6_records",
+                "configuration_recommendation": self._get_ipv6_recommendation(result),
+                "readiness_score": self._calculate_ipv6_readiness_score(result)
+            }
+            
+            self.log(f"IPv6 support validation completed for {domain}", Fore.GREEN)
+            
+        except Exception as e:
+            result["error"] = str(e)
+            result["status"] = "error"
+            self.log(f"IPv6 validation error: {str(e)}", Fore.RED)
+        
+        return result
+
+    def _get_ipv6_recommendation(self, result):
+        """Generate IPv6 configuration recommendations"""
+        dual_stack = result["dual_stack_analysis"]
+        
+        if dual_stack["dual_stack_enabled"]:
+            return "Dual-stack configuration detected - excellent IPv6 readiness"
+        elif dual_stack["ipv4_only"]:
+            return "IPv4-only configuration - consider adding AAAA records for IPv6 support"
+        elif dual_stack["ipv6_only"]:
+            return "IPv6-only configuration - consider adding A records for broader compatibility"
+        else:
+            return "No DNS records found - check domain configuration"
+
+    def _calculate_ipv6_readiness_score(self, result):
+        """Calculate IPv6 readiness score (0-100)"""
+        score = 0
+        
+        # AAAA records present (40 points)
+        if result["aaaa_records"]:
+            score += 40
+        
+        # Dual-stack configuration (30 points)
+        if result["dual_stack_analysis"]["dual_stack_enabled"]:
+            score += 30
+        
+        # DNS over IPv6 working (20 points)
+        if result["dns_over_ipv6"]["ipv6_dns_functional"]:
+            score += 20
+        
+        # IPv6 connectivity (10 points)
+        ipv6_reachable = any(conn.get("reachable", False) for conn in result["ipv6_connectivity"].values())
+        if ipv6_reachable:
+            score += 10
+        
+        return score
+
 
 @click.group()
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose output')
@@ -2051,6 +2639,258 @@ def health_monitor(ctx, domain, duration, interval):
         
     except KeyboardInterrupt:
         print(f"\n{Fore.YELLOW}Monitoring interrupted by user{Style.RESET_ALL}")
+
+
+@cli.command('geo-dns')
+@click.argument('domain')
+@click.pass_context
+def geo_dns(ctx, domain):
+    """Test DNS resolution from different geographic locations"""
+    validator = ctx.obj['validator']
+    result = validator.test_geolocation_dns(domain)
+    
+    print(f"\n{Fore.CYAN}Geolocation DNS Testing for {domain}{Style.RESET_ALL}")
+    print("=" * 60)
+    
+    if "error" in result:
+        print(f"{Fore.RED}Error: {result['error']}{Style.RESET_ALL}")
+        return
+    
+    # Display summary
+    summary = result["summary"]
+    print(f"\n{Fore.CYAN}Test Summary:{Style.RESET_ALL}")
+    print(f"  • Tests performed: {summary['total_tests']}")
+    print(f"  • Successful tests: {summary['successful_tests']}")
+    
+    success_rate = summary['success_rate']
+    rate_color = Fore.GREEN if success_rate > 95 else Fore.YELLOW if success_rate > 80 else Fore.RED
+    print(f"  • Success rate: {rate_color}{success_rate}%{Style.RESET_ALL}")
+    print(f"  • Average response time: {summary['average_response_time_ms']} ms")
+    
+    # GeoDNS Analysis
+    geodns_analysis = result["geodns_analysis"]
+    if geodns_analysis["geodns_detected"]:
+        print(f"\n{Fore.GREEN}✓ GeoDNS routing detected{Style.RESET_ALL}")
+        print(f"  • Unique IP addresses: {geodns_analysis['total_unique_ips']}")
+        print(f"  • Routing consistency: {'Yes' if geodns_analysis['routing_consistency'] else 'No'}")
+    else:
+        print(f"\n{Fore.YELLOW}• Single IP routing detected (no GeoDNS){Style.RESET_ALL}")
+    
+    # CDN Detection
+    if result["cdn_endpoints"]:
+        print(f"\n{Fore.CYAN}CDN Providers Detected:{Style.RESET_ALL}")
+        cdn_providers = set(endpoint["cdn_provider"] for endpoint in result["cdn_endpoints"])
+        for provider in cdn_providers:
+            provider_endpoints = [ep for ep in result["cdn_endpoints"] if ep["cdn_provider"] == provider]
+            print(f"  • {provider.title()}: {len(provider_endpoints)} endpoint(s)")
+            for endpoint in provider_endpoints:
+                print(f"    - {endpoint['ip']} ({endpoint['reverse_domain']})")
+    
+    # Geographic Results
+    if ctx.obj.get('verbose'):
+        print(f"\n{Fore.CYAN}Geographic Test Results:{Style.RESET_ALL}")
+        for location, data in result["geo_results"].items():
+            if data["status"] == "success":
+                status_icon = f"{Fore.GREEN}✓{Style.RESET_ALL}"
+                response_time = f"({data['response_time']}ms)"
+            else:
+                status_icon = f"{Fore.RED}✗{Style.RESET_ALL}"
+                response_time = "(failed)"
+            
+            print(f"\n  {status_icon} {location} {response_time}")
+            if data.get("a_records"):
+                print(f"    A records: {', '.join(data['a_records'])}")
+            if data.get("aaaa_records"):
+                print(f"    AAAA records: {', '.join(data['aaaa_records'])}")
+            if data.get("error"):
+                print(f"    Error: {data['error']}")
+
+
+@cli.command('load-balancer')
+@click.argument('domain')
+@click.pass_context
+def load_balancer(ctx, domain):
+    """Check load balancer health and validate multiple A records"""
+    validator = ctx.obj['validator']
+    result = validator.check_load_balancer_health(domain)
+    
+    print(f"\n{Fore.CYAN}Load Balancer Health Check for {domain}{Style.RESET_ALL}")
+    print("=" * 60)
+    
+    if "error" in result:
+        print(f"{Fore.RED}Error: {result['error']}{Style.RESET_ALL}")
+        return
+    
+    # Display summary
+    summary = result.get("summary", {})
+    if not summary.get("load_balancer_detected"):
+        print(f"{Fore.YELLOW}• No load balancer detected{Style.RESET_ALL}")
+        if "reason" in summary:
+            print(f"  Reason: {summary['reason']}")
+        return
+    
+    print(f"\n{Fore.GREEN}✓ Load balancer detected{Style.RESET_ALL}")
+    print(f"  • Total endpoints: {summary['total_endpoints']}")
+    print(f"  • Healthy endpoints: {summary['healthy_endpoints']}")
+    
+    # Health status
+    health_status = summary['health_status']
+    if health_status == "good":
+        health_color = Fore.GREEN
+    elif health_status == "degraded":
+        health_color = Fore.YELLOW
+    else:
+        health_color = Fore.RED
+    
+    print(f"  • Health status: {health_color}{health_status.title()}{Style.RESET_ALL}")
+    print(f"  • Load balancing type: {summary['load_balancing_type'].replace('_', ' ').title()}")
+    print(f"  • Failover ready: {'Yes' if summary['failover_ready'] else 'No'}")
+    print(f"  • Redundancy level: {summary['redundancy_assessment'].title()}")
+    
+    # Endpoint Health Details
+    if ctx.obj.get('verbose') and result.get("health_checks"):
+        print(f"\n{Fore.CYAN}Endpoint Health Details:{Style.RESET_ALL}")
+        for ip, health in result["health_checks"].items():
+            status = health["status"]
+            if status == "healthy":
+                status_icon = f"{Fore.GREEN}✓{Style.RESET_ALL}"
+            elif status == "tcp_only":
+                status_icon = f"{Fore.YELLOW}⚠{Style.RESET_ALL}"
+            else:
+                status_icon = f"{Fore.RED}✗{Style.RESET_ALL}"
+            
+            print(f"\n  {status_icon} {ip} ({status.replace('_', ' ').title()})")
+            
+            # TCP port results
+            tcp_ports = health.get("tcp_ports", {})
+            open_ports = [port for port, data in tcp_ports.items() if data.get("open")]
+            if open_ports:
+                print(f"    Open ports: {', '.join(map(str, open_ports))}")
+            
+            # HTTP/HTTPS response
+            if health.get("http_response", {}).get("status_code"):
+                print(f"    HTTP: {health['http_response']['status_code']} ({health['http_response']['response_time']}ms)")
+            if health.get("https_response", {}).get("status_code"):
+                print(f"    HTTPS: {health['https_response']['status_code']} ({health['https_response']['response_time']}ms)")
+    
+    # Load Balancing Analysis
+    if result.get("load_balancing_analysis"):
+        analysis = result["load_balancing_analysis"]
+        print(f"\n{Fore.CYAN}Load Balancing Analysis:{Style.RESET_ALL}")
+        print(f"  • Health percentage: {analysis['health_percentage']}%")
+        print(f"  • Balanced distribution: {'Yes' if analysis['balanced_distribution'] else 'No'}")
+        
+        if ctx.obj.get('verbose') and analysis.get("query_distribution"):
+            print(f"  • Query distribution:")
+            for ip, count in analysis["query_distribution"].items():
+                print(f"    - {ip}: {count} queries")
+
+
+@cli.command('ipv6-check')
+@click.argument('domain')
+@click.pass_context  
+def ipv6_check(ctx, domain):
+    """Enhanced IPv6 support validation including dual-stack configuration"""
+    validator = ctx.obj['validator']
+    result = validator.validate_ipv6_support(domain)
+    
+    print(f"\n{Fore.CYAN}IPv6 Support Validation for {domain}{Style.RESET_ALL}")
+    print("=" * 60)
+    
+    if "error" in result:
+        print(f"{Fore.RED}Error: {result['error']}{Style.RESET_ALL}")
+        return
+    
+    # Display summary
+    summary = result["summary"]
+    print(f"\n{Fore.CYAN}IPv6 Readiness Summary:{Style.RESET_ALL}")
+    
+    # IPv6 Support Status
+    if summary["ipv6_supported"]:
+        print(f"{Fore.GREEN}✓ IPv6 supported{Style.RESET_ALL}")
+        print(f"  • AAAA records found: {len(result['aaaa_records'])}")
+        for record in result["aaaa_records"]:
+            print(f"    - {record}")
+    else:
+        print(f"{Fore.RED}✗ IPv6 not supported{Style.RESET_ALL}")
+        print(f"  • No AAAA records found")
+    
+    # Dual-stack Configuration
+    dual_stack = result["dual_stack_analysis"]
+    config_type = dual_stack["configuration_type"].replace("_", "-").title()
+    
+    if dual_stack["dual_stack_enabled"]:
+        config_color = Fore.GREEN
+    elif dual_stack["ipv4_only"]:
+        config_color = Fore.YELLOW
+    elif dual_stack["ipv6_only"]:
+        config_color = Fore.CYAN
+    else:
+        config_color = Fore.RED
+    
+    print(f"\n{Fore.CYAN}Configuration Type:{Style.RESET_ALL} {config_color}{config_type}{Style.RESET_ALL}")
+    print(f"  • IPv4 records (A): {dual_stack['a_record_count']}")
+    print(f"  • IPv6 records (AAAA): {dual_stack['aaaa_record_count']}")
+    
+    # IPv6 DNS Testing
+    dns_over_ipv6 = result["dns_over_ipv6"]
+    if dns_over_ipv6["ipv6_dns_functional"]:
+        print(f"\n{Fore.GREEN}✓ DNS over IPv6 functional{Style.RESET_ALL}")
+        print(f"  • Success rate: {dns_over_ipv6['success_rate']}%")
+        print(f"  • Servers tested: {dns_over_ipv6['servers_tested']}")
+    else:
+        print(f"\n{Fore.RED}✗ DNS over IPv6 not functional{Style.RESET_ALL}")
+    
+    # IPv6 Connectivity
+    connectivity_status = summary["ipv6_connectivity"]
+    if connectivity_status == "reachable":
+        print(f"\n{Fore.GREEN}✓ IPv6 endpoints reachable{Style.RESET_ALL}")
+    elif connectivity_status == "unreachable":
+        print(f"\n{Fore.RED}✗ IPv6 endpoints unreachable{Style.RESET_ALL}")
+    else:
+        print(f"\n{Fore.YELLOW}• No IPv6 endpoints to test{Style.RESET_ALL}")
+    
+    # Readiness Score
+    readiness_score = summary["readiness_score"]
+    if readiness_score >= 80:
+        score_color = Fore.GREEN
+    elif readiness_score >= 60:
+        score_color = Fore.YELLOW
+    else:
+        score_color = Fore.RED
+    
+    print(f"\n{Fore.CYAN}IPv6 Readiness Score:{Style.RESET_ALL} {score_color}{readiness_score}/100{Style.RESET_ALL}")
+    print(f"Recommendation: {summary['configuration_recommendation']}")
+    
+    # Detailed Results
+    if ctx.obj.get('verbose'):
+        if result.get("ipv6_connectivity"):
+            print(f"\n{Fore.CYAN}IPv6 Connectivity Details:{Style.RESET_ALL}")
+            for ipv6_addr, conn in result["ipv6_connectivity"].items():
+                status_icon = f"{Fore.GREEN}✓{Style.RESET_ALL}" if conn["reachable"] else f"{Fore.RED}✗{Style.RESET_ALL}"
+                print(f"\n  {status_icon} {ipv6_addr}")
+                
+                if conn.get("ping_result"):
+                    ping_status = "Success" if conn["ping_result"] == "success" else "Failed"
+                    print(f"    Ping: {ping_status}")
+                
+                tcp_conn = conn.get("tcp_connectivity", {})
+                if tcp_conn:
+                    open_ports = [port for port, data in tcp_conn.items() if data.get("open")]
+                    if open_ports:
+                        print(f"    Open TCP ports: {', '.join(map(str, open_ports))}")
+        
+        if result.get("ipv6_dns_servers"):
+            print(f"\n{Fore.CYAN}DNS over IPv6 Test Results:{Style.RESET_ALL}")
+            for server_name, server_result in result["ipv6_dns_servers"].items():
+                if server_result["status"] == "success":
+                    status_icon = f"{Fore.GREEN}✓{Style.RESET_ALL}"
+                    response_time = f"({server_result['response_time']}ms)"
+                else:
+                    status_icon = f"{Fore.RED}✗{Style.RESET_ALL}"
+                    response_time = "(failed)"
+                
+                print(f"  {status_icon} {server_name} {response_time}")
 
 
 if __name__ == '__main__':

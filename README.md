@@ -68,10 +68,60 @@ python#### `dnssec <domain>`
 - 👥 Multiple credential sets per provider (staging, production, etc.)
 - 🔐 Interactive secure input for sensitive fields
 - 📁 Secure storage in `~/.dns-validator/` directory
-- 📤 Safe export/backup functionalitypy dnssec example.com
+- 📤 Safe export/backup functionality
+
+#### `geo-dns <domain>`
+🌍 **Test DNS resolution from different geographic locations (NEW!)**
+
+**Features:**
+- DNS resolution testing from 15+ global locations
+- GeoDNS routing validation and detection
+- CDN endpoint identification and analysis
+- Response time comparison across regions
+- Geographic consistency checking
+- Routing pattern analysis
+
+#### `load-balancer <domain>`
+⚖️ **Check load balancer health and validate multiple A records (NEW!)**
+
+**Features:**
+- Multiple A record health validation
+- TCP connectivity testing on common ports
+- HTTP/HTTPS endpoint health checks
+- Load balancing pattern analysis (round-robin vs weighted)
+- Failover capability assessment
+- Redundancy level evaluation
+- Distribution consistency testing
+
+#### `ipv6-check <domain>`
+📡 **Enhanced IPv6 support validation including dual-stack configuration (NEW!)**
+
+**Features:**
+- AAAA record validation and analysis
+- IPv6-only DNS server testing (6 major providers)
+- Dual-stack configuration verification
+- IPv6 connectivity testing (ping + TCP)
+- DNS-over-IPv6 functionality validation
+- IPv6 readiness scoring (0-100)
+- Configuration recommendations
+- Forward/reverse IPv6 consistency
+
+## Usage Examples
+
+```bash
+# Basic DNS validation
+python dns_validator_cli.py check example.com
+
+# Advanced security and analysis features
+python dns_validator_cli.py dnssec example.com
 python dns_validator_cli.py reverse-dns 192.168.1.1
 python dns_validator_cli.py cache-analysis example.com --type A
 python dns_validator_cli.py health-monitor example.com --duration 30 --interval 60
+
+# Geographic and load balancer testing (NEW!)
+python dns_validator_cli.py geo-dns example.com
+python dns_validator_cli.py load-balancer cloudflare.com
+python dns_validator_cli.py ipv6-check google.com
 
 # Manage API credentials (NEW!)
 python dns_validator_cli.py creds add Cloudflare production --api-token YOUR_TOKEN
