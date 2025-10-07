@@ -8,11 +8,6 @@ Flask/FastAPI web interface
     Historical charts and graphs
 
 
-✅ Bulk Domain Processing (COMPLETED v2.5.0)
-✅ Parallel processing 
-✅ Progress tracking
-✅ Batch reporting
-
 - DNS Query Analytics
 Query type distribution
     Geographic query analysis

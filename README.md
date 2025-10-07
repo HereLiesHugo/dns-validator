@@ -211,6 +211,9 @@ python dns_validator_cli.py --verbose delegation example.comting, and DNS provid
 - **DNS Cache Analysis**: TTL compliance checking, cache behavior analysis, and optimization recommendations
 - **DNS Health Monitoring**: Real-time monitoring with alerting and historical tracking
 - **Performance Benchmarking**: Response time analysis across multiple DNS servers
+- **DNS Query Analytics**: Real-time query type distribution, geographic analysis, and temporal pattern detection
+- **Advanced Reporting**: Multi-format analytics reports (executive, technical, geographic, performance)
+- **DNS Insights Engine**: Intelligent pattern recognition with baseline establishment and anomaly detection
 
 ### 🛠 **User Experience**
 - **Verbose CLI Output**: Detailed logging and colored output for better debugging
@@ -369,6 +372,65 @@ python dns_validator.py propagation example.com --type MX --verbose
 python dns_validator.py propagation subdomain.example.com --type CNAME
 ```
 
+### DNS Query Analytics Examples (NEW!)
+
+```bash
+# Basic query analytics (5 minutes of data collection)
+dns-validator query-analytics example.com
+
+# Comprehensive analytics with geographic analysis
+dns-validator query-analytics example.com \
+  --duration 900 \
+  --interval 10 \
+  --geographic \
+  --performance \
+  --output analytics-data.json
+
+# Custom query types and resolvers
+dns-validator query-analytics example.com \
+  --query-types A,AAAA,MX,NS,TXT,CNAME,SOA \
+  --resolvers 8.8.8.8,1.1.1.1,9.9.9.9 \
+  --duration 600
+
+# Generate executive summary report
+dns-validator analytics-report analytics-data.json \
+  --format executive \
+  --output summary-report.md \
+  --include-charts
+
+# Technical deep-dive report
+dns-validator analytics-report analytics-data.json \
+  --format technical \
+  --output tech-analysis.html \
+  --detailed
+
+# Geographic optimization report
+dns-validator analytics-report analytics-data.json \
+  --format geographic \
+  --output geo-analysis.txt
+
+# Performance monitoring report with alerts
+dns-validator analytics-report analytics-data.json \
+  --format performance \
+  --threshold 50 \
+  --timeframe 24h
+
+# Quick DNS insights (1 minute analysis)
+dns-validator dns-insights example.com --quick
+
+# Comprehensive insights with baseline establishment
+dns-validator dns-insights example.com \
+  --comprehensive \
+  --baseline \
+  --export-insights \
+  --alert-thresholds
+
+# Compare current performance with historical data
+dns-validator dns-insights example.com \
+  --compare previous-insights.json \
+  --export-insights current-insights.json
+```
+
 ## Command Reference
 
 ### Global Options
@@ -475,6 +537,68 @@ Perform all DNS checks in sequence.
 - 🔐 Interactive secure input for sensitive fields
 - 💾 Secure storage in `~/.dns-validator/` directory
 - 📤 Safe export/backup functionality
+
+#### `query-analytics <domain>`
+📊 **Advanced DNS query analytics with comprehensive data collection (NEW!)**
+
+**Options:**
+- `--duration, -d`: Collection duration in seconds (default: 300)
+- `--interval, -i`: Query interval in seconds (default: 5)
+- `--query-types, -t`: Comma-separated query types (default: A,AAAA,MX,NS,TXT)
+- `--resolvers, -r`: Comma-separated resolver IPs (uses public DNS by default)
+- `--output, -o`: Output file for analytics data (JSON format)
+- `--geographic`: Enable geographic analysis of query paths
+- `--performance`: Include detailed performance metrics
+- `--concurrent`: Maximum concurrent queries (default: 10)
+
+**Features:**
+- 📈 Real-time query type distribution analysis
+- 🌍 Geographic query path tracking and analysis
+- ⏰ Peak usage time detection and temporal patterns
+- 📊 Response time statistics and performance trends
+- 🔄 Anycast detection and routing analysis
+- 💾 Structured data export for further analysis
+- 📱 Progress tracking with real-time updates
+
+#### `analytics-report <data_file>`
+📋 **Generate comprehensive analytics reports from collected data (NEW!)**
+
+**Options:**
+- `--format, -f`: Report format (executive|technical|geographic|performance) (default: executive)
+- `--output, -o`: Output file path (supports .txt, .md, .html, .json)
+- `--timeframe, -t`: Time period filter (1h|6h|24h|7d|30d|all) (default: all)
+- `--threshold`: Performance threshold for alerts (default: 100ms)
+- `--include-charts`: Include ASCII charts in text reports
+- `--detailed`: Generate detailed technical analysis
+
+**Features:**
+- 📊 Multiple report formats for different audiences
+- 📈 Executive summaries with key performance indicators
+- 🔧 Technical reports with detailed metrics and recommendations
+- 🌍 Geographic analysis with routing optimization suggestions
+- ⚡ Performance reports with SLA compliance tracking
+- 📅 Time-based filtering and trend analysis
+- 🚨 Automated alerting for performance thresholds
+
+#### `dns-insights <domain>`
+🔍 **Advanced DNS insights combining real-time analytics with historical patterns (NEW!)**
+
+**Options:**
+- `--quick, -q`: Quick insight generation (60 seconds)
+- `--comprehensive, -c`: Comprehensive analysis (15 minutes)
+- `--baseline, -b`: Establish performance baseline
+- `--compare <file>`: Compare with previous insights data
+- `--export-insights`: Export insights for trending analysis
+- `--alert-thresholds`: Set custom performance alert levels
+
+**Features:**
+- 🎯 Intelligent query pattern recognition
+- 📊 Automated performance baseline establishment
+- 🔔 Real-time anomaly detection and alerting
+- 📈 Trend analysis with historical comparison
+- 🎨 Interactive insights dashboard (when supported)
+- 💡 Actionable recommendations for DNS optimization
+- 🔄 Continuous monitoring integration capabilities
 
 ## DNS Servers Tested
 
