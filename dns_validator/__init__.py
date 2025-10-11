@@ -15,4 +15,17 @@ __author__ = "Matisse Urquhart"
 # Import main classes for easy access
 from .dns_validator import DNSValidator, cli
 
-__all__ = ['DNSValidator', 'cli']
+# Import modular components for individual use
+from . import utils
+from . import analytics
+from . import bulk
+from .api_key_manager import APIKeyManager
+
+__all__ = [
+    'DNSValidator', 
+    'cli',
+    'utils',
+    'analytics', 
+    'bulk',
+    'APIKeyManager'
+]
