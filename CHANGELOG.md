@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2025-10-11
+
+### Added
+- 🏗️ **Complete Modular Architecture**
+  - Refactored entire codebase into clean, reusable modules
+  - New modular structure: `utils.py`, `analytics.py`, `bulk.py`, `cli.py`
+  - Individual module imports for custom integrations
+  - Maintained backward compatibility with existing functionality
+
+- 📊 **DNS Query Analytics System**
+  - Comprehensive query type distribution analysis
+  - Geographic query analysis with IP geolocation
+  - Peak usage time detection and temporal patterns
+  - Performance metrics and nameserver analysis
+  - New commands: `query-analytics`, `analytics-report`, `dns-insights`
+
+- 🚀 **Enhanced Bulk Processing**
+  - Parallel domain processing with progress tracking
+  - Multiple output formats: JSON, HTML, CSV
+  - Configurable worker threads (1-50)
+  - Comprehensive error handling and reporting
+  - New commands: `bulk`, `create-bulk-file`
+
+- 🔧 **Improved Build System**
+  - Added `pyproject.toml` for modern Python packaging
+  - Enhanced GitHub CI/CD workflows with comprehensive testing
+  - Optional dependency groups: `[clipboard]`, `[cloud]`, `[ssl]`, `[all]`
+  - Multi-Python version testing (3.8-3.12)
+  - Updated MANIFEST.in for complete file inclusion
+
+### Changed
+- 📦 **Package Structure**
+  - Moved from single-file to modular architecture
+  - Updated entry points to support modular imports
+  - Enhanced documentation with `MODULAR_ARCHITECTURE.md` and `USAGE_GUIDE.md`
+  - Improved import resolution and TYPE_CHECKING support
+
+- 🛠️ **Developer Experience**
+  - Added comprehensive test suite for modular components
+  - Created `test_package.py` for validation testing
+  - Enhanced error messages and debugging information
+  - Updated CLI help text and command organization
+
+- 📋 **Dependencies**
+  - Made cloud provider SDKs optional dependencies
+  - Cleaner requirements.txt with optional dependency comments
+  - Updated minimum Python version to 3.8 for better compatibility
+  - Improved dependency version constraints
+
+### Fixed
+- 🔧 **Import Resolution**
+  - Fixed relative import issues in TYPE_CHECKING blocks
+  - Resolved module path conflicts in different execution contexts
+  - Updated CLI wrapper scripts for better portability
+  - Enhanced cross-platform compatibility
+
+- 📁 **File Structure**
+  - Updated MANIFEST.in to include all necessary files
+  - Fixed package data inclusion for PyPI distribution
+  - Corrected entry point configurations
+  - Improved batch file portability (Windows)
+
 ## [2.1.0] - 2025-10-07
 
 ### Added

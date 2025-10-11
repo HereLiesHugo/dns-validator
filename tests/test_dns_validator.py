@@ -3,9 +3,13 @@
 import unittest
 import sys
 import os
+
+# Add the parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dns_validator.dns_validator import DNSValidator
+from dns_validator import utils, analytics, bulk
+from dns_validator.api_key_manager import APIKeyManager
 
 class TestDNSValidator(unittest.TestCase):
     """Test cases for DNS Validator functionality"""
@@ -49,14 +53,48 @@ class TestDNSValidator(unittest.TestCase):
         # This should likely fail since google.com doesn't resolve to 192.168.1.1
         self.assertEqual(result["expected_value"], "192.168.1.1")
     
-    def test_cloudflare_check_basic(self):
-        """Test basic Cloudflare check without API token"""
-        result = self.validator.check_cloudflare_settings(self.test_domain)
+    def test_provider_check_basic(self):
+        """Test basic provider check functionality"""
+        result = self.validator.detect_dns_provider(self.test_domain)
         
         self.assertEqual(result["domain"], self.test_domain)
-        self.assertIsInstance(result["cloudflare_detected"], bool)
-        self.assertIsInstance(result["records"], list)
+        self.assertIsInstance(result["detected_providers"], list)
+        self.assertIsInstance(result["nameservers"], list)
         self.assertIsInstance(result["errors"], list)
+    
+    def test_modular_utils(self):
+        """Test modular utils functions"""
+        # Test domain validation
+        self.assertTrue(utils.is_valid_domain("example.com"))
+        self.assertFalse(utils.is_valid_domain("invalid"))
+        
+        # Test domain list cleaning
+        domains = utils.clean_domain_list(["example.com", "", "test.org", "invalid", "github.com"])
+        self.assertIsInstance(domains, list)
+        self.assertIn("example.com", domains)
+        self.assertNotIn("", domains)
+    
+    def test_modular_analytics_instantiation(self):
+        """Test analytics module instantiation"""
+        analytics_instance = analytics.DNSQueryAnalytics(self.validator)
+        self.assertIsNotNone(analytics_instance)
+        
+        reporter = analytics.DNSAnalyticsReporter()
+        self.assertIsNotNone(reporter)
+    
+    def test_modular_bulk_instantiation(self):
+        """Test bulk processing module instantiation"""
+        bulk_processor = bulk.BulkDomainProcessor(self.validator)
+        self.assertIsNotNone(bulk_processor)
+    
+    def test_api_key_manager(self):
+        """Test API key manager basic functionality"""
+        key_manager = APIKeyManager()
+        self.assertIsNotNone(key_manager)
+        
+        # Test credentials listing functionality
+        creds = key_manager.list_credentials()
+        self.assertIsInstance(creds, dict)
 
 if __name__ == '__main__':
     print("Running DNS Validator Tests...")

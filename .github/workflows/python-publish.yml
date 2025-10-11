@@ -21,10 +21,24 @@ jobs:
           python-version: "3.x"
 
       - name: Install build tools
-        run: pip install build
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Verify package structure
+        run: |
+          python -c "
+          import dns_validator
+          print(f'✅ DNS Validator v{dns_validator.__version__}')
+          from dns_validator import DNSValidator, utils, analytics, bulk
+          print('✅ All modules imported successfully')
+          "
 
       - name: Build release distributions
         run: python -m build
+
+      - name: Check package integrity
+        run: twine check dist/*
 
       - name: Upload distributions
         uses: actions/upload-artifact@v4

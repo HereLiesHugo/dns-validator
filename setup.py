@@ -5,10 +5,10 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="dns-validator",
-    version="2.6.0",
+    version="2.7.0",
     author="Matisse Urquhart",
     author_email="me@maturqu.com",
-    description="A comprehensive DNS validation tool with delegation, propagation, and provider settings checks",
+    description="A comprehensive DNS validation tool with modular architecture, analytics, bulk processing, and provider integrations",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/HereLiesHugo/dns-validator",
@@ -52,13 +52,41 @@ setup(
         "urllib3>=1.26.0",
         "pyperclip>=1.8.0",
     ],
+    extras_require={
+        "clipboard": ["pyperclip>=1.8.0"],
+        "cloud": [
+            "boto3>=1.26.0",
+            "google-cloud-dns>=0.34.0",
+            "azure-mgmt-dns>=8.0.0",
+            "azure-identity>=1.12.0",
+            "azure-core>=1.24.0",
+        ],
+        "ssl": [
+            "pyOpenSSL>=23.0.0",
+        ],
+        "dev": [
+            "pytest>=7.0.0",
+            "pytest-cov>=4.0.0",
+            "flake8>=6.0.0",
+            "black>=23.0.0",
+        ],
+        "all": [
+            "pyperclip>=1.8.0",
+            "boto3>=1.26.0",
+            "google-cloud-dns>=0.34.0",
+            "azure-mgmt-dns>=8.0.0",
+            "azure-identity>=1.12.0",
+            "azure-core>=1.24.0",
+            "pyOpenSSL>=23.0.0",
+        ],
+    },
     entry_points={
         "console_scripts": [
             "dns-validator=dns_validator.dns_validator:cli",
             "dnsval=dns_validator.dns_validator:cli",
         ],
     },
-    keywords="dns validation delegation propagation cloudflare nameservers cli",
+    keywords="dns validation delegation propagation cloudflare nameservers cli analytics bulk-processing modular-architecture",
     project_urls={
         "Bug Reports": "https://github.com/HereLiesHugo/dns-validator/issues",
         "Source": "https://github.com/HereLiesHugo/dns-validator",

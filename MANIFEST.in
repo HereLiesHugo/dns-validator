@@ -1,4 +1,15 @@
-include dns_validator.py
 include requirements.txt
 include README.md
 include LICENSE
+include CHANGELOG.md
+include MODULAR_ARCHITECTURE.md
+include USAGE_GUIDE.md
+include dns_validator_cli.py
+include dns-validator.bat
+include dns-validator.ps1
+include dns-validator.sh
+recursive-include dns_validator *.py
+recursive-include examples *.py *.md *.txt
+recursive-include tests *.py
+global-exclude *.pyc
+global-exclude __pycache__
